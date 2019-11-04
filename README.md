@@ -1,0 +1,1 @@
+# vendr-payment-providers
