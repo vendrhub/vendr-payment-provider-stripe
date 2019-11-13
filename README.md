@@ -1,1 +1,1 @@
-# vendr-payment-providers
+# vendr-payment-provider-stripe
