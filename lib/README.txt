@@ -1,0 +1,1 @@
+We will eventually get rid of these DLLs and instead use NuGet reference, but given Vendr isn't realeased yet, for now we will use dll lib references
