@@ -53,5 +53,19 @@ namespace Vendr.PaymentProvider.Stripe
             Description = "Set whether to process payments in live or test mode.",
             SortOrder = 1000000)]
         public StripePaymentProviderMode Mode { get; set; }
+
+        // Advanced settings
+
+        [PaymentProviderSetting(Name = "Order Heading",
+            Description = "A heading to display on the order summary of the Stripe Checkout screen.",
+            IsAdvanced = true,
+            SortOrder = 1000001)]
+        public string OrderHeading { get; set; }
+
+        [PaymentProviderSetting(Name = "Order Image",
+            Description = "The URL of an image to display on the order summary of the Stripe Checkout screen. Should be 300x300px.",
+            IsAdvanced = true,
+            SortOrder = 1000002)]
+        public string OrderImage { get; set; }
     }
 }

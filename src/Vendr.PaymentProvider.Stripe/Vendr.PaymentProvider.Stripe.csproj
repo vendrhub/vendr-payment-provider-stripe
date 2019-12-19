@@ -84,6 +84,7 @@
     <Compile Include="StripePaymentProviderMode.cs" />
     <Compile Include="StripePaymentProviderBase.cs" />
     <Compile Include="StripeSettingsBase.cs" />
+    <Compile Include="StripeWebhookEvent.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

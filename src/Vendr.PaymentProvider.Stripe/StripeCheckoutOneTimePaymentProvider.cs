@@ -40,7 +40,7 @@ namespace Vendr.PaymentProvider.Stripe
                 var stripeEvent = GetWebhookStripeEvent(request, webhookSigningSecret);
                 if (stripeEvent != null && stripeEvent.Type == Events.CheckoutSessionCompleted)
                 {
-                    if (stripeEvent.Data.Object is Session stripeSession && !string.IsNullOrWhiteSpace(stripeSession.ClientReferenceId))
+                    if (stripeEvent.Data?.Object?.Instance is Session stripeSession && !string.IsNullOrWhiteSpace(stripeSession.ClientReferenceId))
                     {
                         return OrderReference.Parse(stripeSession.ClientReferenceId);
                     }
@@ -133,7 +133,7 @@ namespace Vendr.PaymentProvider.Stripe
                 var stripeEvent = GetWebhookStripeEvent(request, webhookSigningSecret);
                 if (stripeEvent != null && stripeEvent.Type == Events.CheckoutSessionCompleted)
                 {
-                    if (stripeEvent.Data.Object is Session stripeSession)
+                    if (stripeEvent.Data?.Object?.Instance is Session stripeSession)
                     {
                         var paymentIntentService = new PaymentIntentService();
                         var paymentIntent = paymentIntentService.Get(stripeSession.PaymentIntentId);

@@ -1,4 +1,6 @@
-﻿using Stripe;
+﻿using Newtonsoft.Json;
+using Stripe;
+using Stripe.Checkout;
 using System;
 using System.IO;
 using System.Web;
@@ -31,13 +33,13 @@ namespace Vendr.PaymentProvider.Stripe
             return settings.ErrorUrl;
         }
 
-        protected Event GetWebhookStripeEvent(HttpRequestBase request, string webhookSigningSecret)
+        protected StripeWebhookEvent GetWebhookStripeEvent(HttpRequestBase request, string webhookSigningSecret)
         {
-            Event stripeEvent = null;
+            StripeWebhookEvent stripeEvent = null;
 
             if (HttpContext.Current.Items["Vendr_StripeEvent"] != null)
             {
-                stripeEvent = (Event)HttpContext.Current.Items["Vendr_StripeEvent"];
+                stripeEvent = (StripeWebhookEvent)HttpContext.Current.Items["Vendr_StripeEvent"];
             }
             else
             {
@@ -50,7 +52,42 @@ namespace Vendr.PaymentProvider.Stripe
                     {
                         var json = reader.ReadToEnd();
 
-                        stripeEvent = EventUtility.ConstructEvent(json, request.Headers["Stripe-Signature"], webhookSigningSecret, throwOnApiVersionMismatch: false);
+                        // Just validate the webhook signature
+                        EventUtility.ValidateSignature(json, request.Headers["Stripe-Signature"], webhookSigningSecret);
+
+                        // Parse the event ourselves to our custom webhook event model
+                        // as it only captures minimal object information.
+                        stripeEvent = JsonConvert.DeserializeObject<StripeWebhookEvent>(json);
+
+                        // We manually fetch the event object type ourself as it means it will be fetched
+                        // using the same API version as the payment providers is coded against.
+                        // NB: Only supports a number of object types we are likely to be interested in.
+                        if (stripeEvent?.Data?.Object != null)
+                        {
+                            switch (stripeEvent.Data.Object.Type)
+                            {
+                                case "session":
+                                    var sessionService = new SessionService();
+                                    stripeEvent.Data.Object.Instance = sessionService.Get(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "charge":
+                                    var chargeService = new ChargeService();
+                                    stripeEvent.Data.Object.Instance = chargeService.Get(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "payment_intent":
+                                    var paymentIntentService = new PaymentIntentService();
+                                    stripeEvent.Data.Object.Instance = paymentIntentService.Get(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "subscription":
+                                    var subscriptionService = new SubscriptionService();
+                                    stripeEvent.Data.Object.Instance = subscriptionService.Get(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "invoice":
+                                    var invoiceService = new InvoiceService();
+                                    stripeEvent.Data.Object.Instance = invoiceService.Get(stripeEvent.Data.Object.Id);
+                                    break;
+                            }
+                        }
 
                         HttpContext.Current.Items["Vendr_StripeEvent"] = stripeEvent;
                     }
