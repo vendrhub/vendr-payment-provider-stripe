@@ -78,6 +78,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="StripeCheckoutOneTimePaymentProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StripeCheckoutOneTimeSettings.cs" />
