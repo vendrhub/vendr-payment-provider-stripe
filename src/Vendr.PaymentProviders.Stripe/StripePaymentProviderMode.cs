@@ -1,4 +1,4 @@
-﻿namespace Vendr.PaymentProvider.Stripe
+﻿namespace Vendr.PaymentProviders.Stripe
 {
     public enum StripePaymentProviderMode
     {

@@ -7,8 +7,8 @@
     <ProjectGuid>{54D75F3D-BD42-45E8-BC99-210A9AD71CEB}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Vendr.PaymentProvider.Stripe</RootNamespace>
-    <AssemblyName>Vendr.PaymentProvider.Stripe</AssemblyName>
+    <RootNamespace>Vendr.PaymentProviders.Stripe</RootNamespace>
+    <AssemblyName>Vendr.PaymentProviders.Stripe</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

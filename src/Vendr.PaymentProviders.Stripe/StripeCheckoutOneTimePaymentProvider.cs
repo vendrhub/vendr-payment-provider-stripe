@@ -11,7 +11,7 @@ using Vendr.Core.Web;
 using Vendr.Core.Web.Api;
 using Vendr.Core.Web.PaymentProviders;
 
-namespace Vendr.PaymentProvider.Stripe
+namespace Vendr.PaymentProviders.Stripe
 {
     [PaymentProvider("stripe-checkout-onetime", "Stripe Checkout (One Time)", "Stripe Checkout payment provider for one time payments")]
     public class StripeCheckoutOneTimePaymentProvider : StripePaymentProviderBase<StripeCheckoutOneTimeSettings>

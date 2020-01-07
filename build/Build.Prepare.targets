@@ -6,9 +6,9 @@
         
         <!-- Copy static files --> 
 		<ItemGroup>
-			<BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProvider.*.dll" />
-            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProvider.*.pdb" />
-            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProvider.*.xml" />
+			<BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.dll" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.pdb" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.xml" />
             <AssetFiles Include="$(RootDir)\assets\*" />
             <VendrLicenseFile Include="$(RootDir)\LICENSE.md" />
 		</ItemGroup>

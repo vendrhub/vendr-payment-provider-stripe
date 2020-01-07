@@ -9,7 +9,7 @@ using Vendr.Core.Models;
 using Vendr.Core.Web.Api;
 using Vendr.Core.Web.PaymentProviders;
 
-namespace Vendr.PaymentProvider.Stripe
+namespace Vendr.PaymentProviders.Stripe
 {
     public abstract class StripePaymentProviderBase<TSettings> : PaymentProviderBase<TSettings>
         where TSettings : StripeSettingsBase, new()

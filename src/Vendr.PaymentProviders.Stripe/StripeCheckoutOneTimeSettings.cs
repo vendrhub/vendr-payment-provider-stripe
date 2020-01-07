@@ -1,6 +1,6 @@
 ﻿using Vendr.Core.Web.PaymentProviders;
 
-namespace Vendr.PaymentProvider.Stripe
+namespace Vendr.PaymentProviders.Stripe
 {
     public class StripeCheckoutOneTimeSettings : StripeSettingsBase
     {

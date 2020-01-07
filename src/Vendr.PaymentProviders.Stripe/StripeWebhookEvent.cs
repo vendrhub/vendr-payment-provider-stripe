@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Vendr.PaymentProvider.Stripe
+namespace Vendr.PaymentProviders.Stripe
 {
     // Stripped down Stripe webhook event which should
     // hopefully work regardless of webhook API version.
