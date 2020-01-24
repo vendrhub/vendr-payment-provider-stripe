@@ -14,11 +14,15 @@
         <ArtifactsDir Condition="'$(ArtifactsDir)'==''">$(RootDir)\artifacts</ArtifactsDir>
         <ArtifactFilesDir>$(ArtifactsDir)\files</ArtifactFilesDir>
         <ArtifactPackagesDir>$(ArtifactsDir)\packages</ArtifactPackagesDir>
+        
+        <PaymentProviderName>Stripe</PaymentProviderName>
+        <ProjectName>Vendr.PaymentProviders.$(PaymentProviderName)</ProjectName>
+        <MinUmbracoVersion>8.2.0</MinUmbracoVersion>
 	</PropertyGroup>
 
     <ItemGroup>
-        <SolutionFile Include="$(RootDir)\*.sln" />
-        <ProjectFiles Include="$(SourceDir)\Vendr.PaymentProviders.*\*.csproj" />
+        <SolutionFile Include="$(RootDir)\$(ProjectName).sln" />
+        <ProjectFiles Include="$(SourceDir)\$(ProjectName)\$(ProjectName).csproj" />
     </ItemGroup>
 
 	<!-- IMPORT SUB TASKS -->

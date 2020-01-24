@@ -31,7 +31,7 @@ stages:
       inputs:
         solution: 'build/build.proj'
         configuration: 'Release'
-        msbuildArguments: '-target:PrepareAndPackageNuget -property:ArtifactsDir=$(Build.ArtifactStagingDirectory)'
+        msbuildArguments: '-target:PrepareAndPackageAll -property:ArtifactsDir=$(Build.ArtifactStagingDirectory)'
 
     - publish: $(Build.ArtifactStagingDirectory)
       displayName: 'Publish Artifacts'

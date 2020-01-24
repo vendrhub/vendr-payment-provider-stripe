@@ -6,9 +6,12 @@
         
         <!-- Copy static files --> 
 		<ItemGroup>
-			<BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.dll" />
-            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.pdb" />
-            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Vendr.PaymentProviders.*.xml" />
+			<BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\$(ProjectName).dll" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\$(ProjectName).pdb" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\$(ProjectName).xml" />
+            <!-- BEGIN DLL DEPENDENCIES-->
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Stripe.net.dll" />
+            <!-- END DLL DEPENDENCIES-->
             <AssetFiles Include="$(RootDir)\assets\*" />
             <VendrLicenseFile Include="$(RootDir)\LICENSE.md" />
 		</ItemGroup>

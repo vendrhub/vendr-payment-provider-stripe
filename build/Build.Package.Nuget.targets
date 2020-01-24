@@ -1,12 +1,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Main" ToolsVersion="14.0">
  
-    <!-- PROPERTIES -->
-    <PropertyGroup>
-        <MinUmbracoVersion>8.2.0</MinUmbracoVersion>
-    </PropertyGroup>
-    
+    <!-- PROPERTIES -->    
     <ItemGroup>
-        <NuSpecFiles Include="$(BuildDir)\NuSpecs\*.nuspec">
+        <NuSpecFiles Include="$(BuildDir)\NuSpecs\$(ProjectName).nuspec">
             <WithSymbols>true</WithSymbols>
         </NuSpecFiles>
     </ItemGroup>
