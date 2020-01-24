@@ -20,6 +20,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NuSpecs", "NuSpecs", "{8106
 		build\NuSpecs\Vendr.PaymentProviders.Stripe.nuspec = build\NuSpecs\Vendr.PaymentProviders.Stripe.nuspec
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Umbraco", "Umbraco", "{3DD1D6DA-F67A-4D93-AD13-7EB7DC498C65}"
+	ProjectSection(SolutionItems) = preProject
+		build\Umbraco\Stripe.package.xml = build\Umbraco\Stripe.package.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +41,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{81061D69-BD7A-443B-B18D-9BF1F4840A31} = {A2F6C69B-7FBB-4520-B282-1B47A0854A03}
+		{3DD1D6DA-F67A-4D93-AD13-7EB7DC498C65} = {A2F6C69B-7FBB-4520-B282-1B47A0854A03}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B3A08DA4-571B-4CE5-A04A-7F7E8EC953F1}
