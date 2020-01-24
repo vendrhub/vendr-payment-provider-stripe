@@ -5,8 +5,8 @@
         <package>
             <name>Vendr.PaymentProviders.Stripe</name>
             <version>0.0.0</version>
-            <license url="http://getverndr.net/license/">Outfield Digital Commercial Licence</license>
-            <url>https://getvendr.net</url>
+            <license url="https://opensource.org/licenses/MIT">MIT</license>
+            <url></url>
             <requirements>
                 <major>8</major>
                 <minor>2</minor>
@@ -14,8 +14,8 @@
             </requirements>
         </package>
         <author>
-            <name>Outfield Digital Ltd</name>
-            <website>https://outfield.digital</website>
+            <name></name>
+            <website></website>
         </author>
         <readme>Stripe payment provider for Vendr, the eCommerce package for Umbrao v8+</readme>
     </info>
