@@ -4,7 +4,7 @@
     <!-- RESTORE NUGET PACKAGES -->
     <Target Name="RestoreNugetPackages">
         <Exec WorkingDirectory="@(SolutionFile->'%(RootDir)%(Directory)')" 
-            Command="$(BuildToolsDir)\nuget\nuget.exe restore @(SolutionFile->'%(Filename)%(Extension)')"/>
+            Command="$(BuildToolsDir)\nuget\nuget.exe restore @(SolutionFile->'%(Filename)%(Extension)') -source https://nuget.outfield.digital/unstable/vendr/v3/index.json;https://api.nuget.org/v3/index.json"/>
     </Target>
 
 	<!-- UPDATE PROJECT ASSEMBLEY VERSION -->

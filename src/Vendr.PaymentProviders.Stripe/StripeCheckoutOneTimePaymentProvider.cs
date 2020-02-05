@@ -54,7 +54,7 @@ namespace Vendr.PaymentProviders.Stripe
             return base.GetOrderReference(request, settings);
         }
 
-        public override PaymentForm GenerateForm(OrderReadOnly order, string continueUrl, string cancelUrl, string callbackUrl, StripeCheckoutOneTimeSettings settings)
+        public override PaymentFormResult GenerateForm(OrderReadOnly order, string continueUrl, string cancelUrl, string callbackUrl, StripeCheckoutOneTimeSettings settings)
         {
             var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
             var publicKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestPublicKey : settings.LivePublicKey;
@@ -98,27 +98,30 @@ namespace Vendr.PaymentProviders.Stripe
             var sessionService = new SessionService();
             var session = sessionService.Create(sessionOptions);
 
-            return new PaymentForm(continueUrl, FormMethod.Post)
-                .WithAttribute("onsubmit", "return handleStripeCheckout(event)")
-                .WithJsFile("https://js.stripe.com/v3/")
-                .WithJs(@"
-                    var stripe = Stripe('" + publicKey + @"');
+            return new PaymentFormResult()
+            {
+                Form = new PaymentForm(continueUrl, FormMethod.Post)
+                    .WithAttribute("onsubmit", "return handleStripeCheckout(event)")
+                    .WithJsFile("https://js.stripe.com/v3/")
+                    .WithJs(@"
+                        var stripe = Stripe('" + publicKey + @"');
 
-                    window.handleStripeCheckout = function (e) {
-                        e.preventDefault();
-                        stripe.redirectToCheckout({
-                            sessionId: '" + session.Id + @"'
-                        }).then(function (result) {
-                          // If `redirectToCheckout` fails due to a browser or network
-                          // error, display the localized error message to your customer
-                          // using `result.error.message`.
-                        });
-                        return false;
-                    }
-                ");
+                        window.handleStripeCheckout = function (e) {
+                            e.preventDefault();
+                            stripe.redirectToCheckout({
+                                sessionId: '" + session.Id + @"'
+                            }).then(function (result) {
+                              // If `redirectToCheckout` fails due to a browser or network
+                              // error, display the localized error message to your customer
+                              // using `result.error.message`.
+                            });
+                            return false;
+                        }
+                    ")
+            };
         }
 
-        public override CallbackResponse ProcessCallback(OrderReadOnly order, HttpRequestBase request, StripeCheckoutOneTimeSettings settings)
+        public override CallbackResult ProcessCallback(OrderReadOnly order, HttpRequestBase request, StripeCheckoutOneTimeSettings settings)
         {
             // The ProcessCallback method is only intendid to be called via a Stripe Webhook and so
             // it's job is to process the webhook event and finalize / update the order accordingly
@@ -138,21 +141,18 @@ namespace Vendr.PaymentProviders.Stripe
                         var paymentIntentService = new PaymentIntentService();
                         var paymentIntent = paymentIntentService.Get(stripeSession.PaymentIntentId);
 
-                        return new CallbackResponse
+                        return CallbackResult.Ok(new TransactionInfo
                         {
-                            MetaData = new Dictionary<string, string>
-                            {
-                                { "stripeSessionId", stripeSession.Id },
-                                { "stripePaymentIntentId", stripeSession.PaymentIntentId },
-                                { "stripeChargeId", GetTransactionId(paymentIntent) }
-                            },
-                            TransactionInfo = new TransactionInfo
-                            {
-                                TransactionId = GetTransactionId(paymentIntent),
-                                AmountAuthorized = CentsToDollars(paymentIntent.Amount.Value),
-                                PaymentStatus = GetPaymentStatus(paymentIntent)
-                            }
-                        };
+                            TransactionId = GetTransactionId(paymentIntent),
+                            AmountAuthorized = CentsToDollars(paymentIntent.Amount.Value),
+                            PaymentStatus = GetPaymentStatus(paymentIntent)
+                        },
+                        new Dictionary<string, string>
+                        {
+                            { "stripeSessionId", stripeSession.Id },
+                            { "stripePaymentIntentId", stripeSession.PaymentIntentId },
+                            { "stripeChargeId", GetTransactionId(paymentIntent) }
+                        });
                     }
                 }
             }
@@ -161,10 +161,10 @@ namespace Vendr.PaymentProviders.Stripe
                 Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - ProcessCallback");
             }
 
-            return CallbackResponse.Empty;
+            return CallbackResult.BadRequest();
         }
 
-        public override ApiResponse FetchPaymentStatus(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
+        public override ApiResult FetchPaymentStatus(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
         {
             try
             {
@@ -179,7 +179,14 @@ namespace Vendr.PaymentProviders.Stripe
                     var paymentIntentService = new PaymentIntentService();
                     var paymentIntent = paymentIntentService.Get(paymentIntentId);
 
-                    return new ApiResponse(GetTransactionId(paymentIntent), GetPaymentStatus(paymentIntent));
+                    return new ApiResult()
+                    {
+                        TransactionInfo = new TransactionInfoUpdate()
+                        {
+                            TransactionId = GetTransactionId(paymentIntent),
+                            PaymentStatus = GetPaymentStatus(paymentIntent)
+                        }
+                    };
                 }
 
                 // No payment intent, so look for a charge
@@ -189,7 +196,14 @@ namespace Vendr.PaymentProviders.Stripe
                     var chargeService = new ChargeService();
                     var charge = chargeService.Get(chargeId);
 
-                    return new ApiResponse(GetTransactionId(charge), GetPaymentStatus(charge));
+                    return new ApiResult()
+                    {
+                        TransactionInfo = new TransactionInfoUpdate()
+                        {
+                            TransactionId = GetTransactionId(charge),
+                            PaymentStatus = GetPaymentStatus(charge)
+                        }
+                    };
                 }
             }
             catch (Exception ex)
@@ -197,10 +211,10 @@ namespace Vendr.PaymentProviders.Stripe
                 Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - FetchPaymentStatus");
             }
 
-            return null;
+            return ApiResult.Empty;
         }
 
-        public override ApiResponse CapturePayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
+        public override ApiResult CapturePayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
         {
             try
             {
@@ -221,17 +235,24 @@ namespace Vendr.PaymentProviders.Stripe
                 };
                 var paymentIntent = paymentIntentService.Capture(paymentIntentId, paymentIntentOptions);
 
-                return new ApiResponse(GetTransactionId(paymentIntent), GetPaymentStatus(paymentIntent));
+                return new ApiResult()
+                {
+                    TransactionInfo = new TransactionInfoUpdate()
+                    {
+                        TransactionId = GetTransactionId(paymentIntent),
+                        PaymentStatus = GetPaymentStatus(paymentIntent)
+                    }
+                };
             }
             catch (Exception ex)
             {
                 Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - CapturePayment");
             }
 
-            return null;
+            return ApiResult.Empty;
         }
 
-        public override ApiResponse RefundPayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
+        public override ApiResult RefundPayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
         {
             try
             {
@@ -254,17 +275,24 @@ namespace Vendr.PaymentProviders.Stripe
                 var refund = refundService.Create(refundCreateOptions);
                 var charge = refund.Charge ?? new ChargeService().Get(refund.ChargeId);
 
-                return new ApiResponse(GetTransactionId(charge), GetPaymentStatus(charge));
+                return new ApiResult()
+                {
+                    TransactionInfo = new TransactionInfoUpdate()
+                    {
+                        TransactionId = GetTransactionId(charge),
+                        PaymentStatus = GetPaymentStatus(charge)
+                    }
+                };
             }
             catch (Exception ex)
             {
                 Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - RefundPayment");
             }
 
-            return null;
+            return ApiResult.Empty;
         }
 
-        public override ApiResponse CancelPayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
+        public override ApiResult CancelPayment(OrderReadOnly order, StripeCheckoutOneTimeSettings settings)
         {
             try
             {
@@ -279,7 +307,14 @@ namespace Vendr.PaymentProviders.Stripe
                     var paymentIntentService = new PaymentIntentService();
                     var intent = paymentIntentService.Cancel(stripePaymentIntentId);
 
-                    return new ApiResponse(GetTransactionId(intent), GetPaymentStatus(intent));
+                    return new ApiResult()
+                    {
+                        TransactionInfo = new TransactionInfoUpdate()
+                        {
+                            TransactionId = GetTransactionId(intent),
+                            PaymentStatus = GetPaymentStatus(intent)
+                        }
+                    };
                 }
 
                 // If there is a charge, then it's too late to cancel
@@ -293,7 +328,7 @@ namespace Vendr.PaymentProviders.Stripe
                 Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - CancelPayment");
             }
 
-            return null;
+            return ApiResult.Empty;
         }
 
         protected string GetTransactionId(PaymentIntent paymentIntent)
