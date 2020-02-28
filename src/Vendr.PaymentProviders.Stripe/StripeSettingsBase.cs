@@ -88,7 +88,7 @@ namespace Vendr.PaymentProviders.Stripe
         public string OrderHeading { get; set; }
 
         [PaymentProviderSetting(Name = "Order Image",
-            Description = "The URL of an image to display on the order summary of the Stripe Checkout screen. Should be 300x300px.",
+            Description = "The URL of an image to display on the order summary of the Stripe Checkout screen. Should be 480x480px.",
             IsAdvanced = true,
             SortOrder = 1000002)]
         public string OrderImage { get; set; }

@@ -132,7 +132,7 @@ namespace Vendr.PaymentProviders.Stripe
 
             if (!string.IsNullOrWhiteSpace(settings.OrderImage))
             {
-                sessionOptions.LineItems[0].Images.Add(settings.OrderImage);
+                sessionOptions.LineItems[0].Images = new[] { settings.OrderImage }.ToList();
             }
 
             if (settings.SendStripeReceipt)
