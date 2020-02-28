@@ -28,6 +28,13 @@ namespace Vendr.PaymentProviders.Stripe
         // Don't finalize at continue as we will finalize async via webhook
         public override bool FinalizeAtContinueUrl => false;
 
+        public override IEnumerable<TransactionMetaDataDefinition> TransactionMetaDataDefinitions => new[]{
+            new TransactionMetaDataDefinition("stripeSessionId", "Stripe Session ID"),
+            new TransactionMetaDataDefinition("stripePaymentIntentId", "Stripe Payment Intent ID"),
+            new TransactionMetaDataDefinition("stripeChargeId", "Stripe Charge ID"),
+            new TransactionMetaDataDefinition("stripeCardCountry", "Stripe Card Country")
+        };
+
         public override OrderReference GetOrderReference(HttpRequestBase request, StripeCheckoutOneTimeSettings settings)
         {
             try
@@ -62,16 +69,44 @@ namespace Vendr.PaymentProviders.Stripe
             ConfigureStripe(secretKey);
 
             var currency = Vendr.Services.CurrencyService.GetCurrency(order.CurrencyId);
+            var billingCountry = order.PaymentInfo.CountryId.HasValue
+                ? Vendr.Services.CountryService.GetCountry(order.PaymentInfo.CountryId.Value)
+                : null;
+
+            var customerOptions = new CustomerCreateOptions
+            {
+                Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
+                Email = order.CustomerInfo.Email,
+                Description = order.OrderNumber,
+                Address = new AddressOptions
+                {
+                    Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
+                    Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
+                    City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
+                        ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
+                    State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
+                        ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
+                    PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
+                        ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
+                    Country = billingCountry?.Code
+                }
+            };
+
+            var customerService = new CustomerService();
+            var customer = customerService.Create(customerOptions);
 
             var sessionOptions = new SessionCreateOptions
             {
-                CustomerEmail = order.CustomerInfo.Email,
+                Customer = customer.Id,
                 PaymentMethodTypes = new List<string> {
                     "card",
                 },
                 LineItems = new List<SessionLineItemOptions> {
                     new SessionLineItemOptions {
-                        Name = $"#{order.OrderNumber}",
+                        Name = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : order.OrderNumber,
+                        Description = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? order.OrderNumber : "",
                         Amount = DollarsToCents(order.TotalPrice.Value.WithTax),
                         Currency = currency.Code,
                         Quantity = 1
@@ -82,13 +117,23 @@ namespace Vendr.PaymentProviders.Stripe
                     CaptureMethod = settings.Capture ? "automatic" : "manual",
                     Metadata = new Dictionary<string, string>
                     {
-                        { "orderReference", order.GenerateOrderReference() }
+                        { "orderReference", order.GenerateOrderReference() },
+                        // Pass billing country / zipecode as meta data as currently
+                        // this is the only way it can be validated via Radar
+                        // Block if ::orderBillingCountry:: != :card_country:
+                        { "orderBillingCountry", billingCountry.Code?.ToUpper() },
+                        { "orderBillingZipCode", customerOptions.Address.PostalCode }
                     }
                 },
                 ClientReferenceId = order.GenerateOrderReference(),
                 SuccessUrl = continueUrl,
                 CancelUrl = cancelUrl,
             };
+
+            if (!string.IsNullOrWhiteSpace(settings.OrderImage))
+            {
+                sessionOptions.LineItems[0].Images.Add(settings.OrderImage);
+            }
 
             if (settings.SendStripeReceipt)
             {
@@ -151,7 +196,8 @@ namespace Vendr.PaymentProviders.Stripe
                         {
                             { "stripeSessionId", stripeSession.Id },
                             { "stripePaymentIntentId", stripeSession.PaymentIntentId },
-                            { "stripeChargeId", GetTransactionId(paymentIntent) }
+                            { "stripeChargeId", GetTransactionId(paymentIntent) },
+                            { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
                         });
                     }
                 }
@@ -241,6 +287,11 @@ namespace Vendr.PaymentProviders.Stripe
                     {
                         TransactionId = GetTransactionId(paymentIntent),
                         PaymentStatus = GetPaymentStatus(paymentIntent)
+                    },
+                    MetaData = new Dictionary<string, string>
+                    {
+                        { "stripeChargeId", GetTransactionId(paymentIntent) },
+                        { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
                     }
                 };
             }

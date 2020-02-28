@@ -25,7 +25,7 @@ namespace Vendr.PaymentProviders.Stripe
 
         public override string GetContinueUrl(OrderReadOnly order, TSettings settings)
         {
-            return settings.ContinueUrl + (settings.ContinueUrl.Contains("?") ? "&" : "?") + "session_id={CHECKOUT_SESSION_ID}";
+            return settings.ContinueUrl; // + (settings.ContinueUrl.Contains("?") ? "&" : "?") + "session_id={CHECKOUT_SESSION_ID}";
         }
 
         public override string GetErrorUrl(OrderReadOnly order, TSettings settings)
@@ -66,7 +66,7 @@ namespace Vendr.PaymentProviders.Stripe
                         {
                             switch (stripeEvent.Data.Object.Type)
                             {
-                                case "session":
+                                case "checkout.session":
                                     var sessionService = new SessionService();
                                     stripeEvent.Data.Object.Instance = sessionService.Get(stripeEvent.Data.Object.Id);
                                     break;
@@ -74,7 +74,7 @@ namespace Vendr.PaymentProviders.Stripe
                                     var chargeService = new ChargeService();
                                     stripeEvent.Data.Object.Instance = chargeService.Get(stripeEvent.Data.Object.Id);
                                     break;
-                                case "payment_intent":
+                                case "payment_intent": 
                                     var paymentIntentService = new PaymentIntentService();
                                     stripeEvent.Data.Object.Instance = paymentIntentService.Get(stripeEvent.Data.Object.Id);
                                     break;
