@@ -105,8 +105,8 @@ namespace Vendr.PaymentProviders.Stripe
                 },
                 LineItems = new List<SessionLineItemOptions> {
                     new SessionLineItemOptions {
-                        Name = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : order.OrderNumber,
-                        Description = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? order.OrderNumber : "",
+                        Name = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
+                        Description = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? "#" + order.OrderNumber : null,
                         Amount = DollarsToCents(order.TotalPrice.Value.WithTax),
                         Currency = currency.Code,
                         Quantity = 1
