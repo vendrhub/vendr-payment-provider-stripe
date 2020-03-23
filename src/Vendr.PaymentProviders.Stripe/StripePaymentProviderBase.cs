@@ -106,17 +106,5 @@ namespace Vendr.PaymentProviders.Stripe
             StripeConfiguration.ApiKey = apiKey;
             StripeConfiguration.MaxNetworkRetries = 2;
         }
-
-        protected static long DollarsToCents(decimal val)
-        {
-            var cents = val * 100M;
-            var centsRounded = Math.Round(cents, MidpointRounding.AwayFromZero);
-            return Convert.ToInt64(centsRounded);
-        }
-
-        protected static decimal CentsToDollars(long val)
-        {
-            return val / 100M;
-        }
     }
 }
