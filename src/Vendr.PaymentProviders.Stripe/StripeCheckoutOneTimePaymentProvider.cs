@@ -107,7 +107,7 @@ namespace Vendr.PaymentProviders.Stripe
                     new SessionLineItemOptions {
                         Name = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
                         Description = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? "#" + order.OrderNumber : null,
-                        Amount = DollarsToCents(order.TotalPrice.Value.WithTax),
+                        Amount = AmountToMinorUnits(order.TotalPrice.Value.WithTax),
                         Currency = currency.Code,
                         Quantity = 1
                     },
@@ -189,7 +189,7 @@ namespace Vendr.PaymentProviders.Stripe
                         return CallbackResult.Ok(new TransactionInfo
                         {
                             TransactionId = GetTransactionId(paymentIntent),
-                            AmountAuthorized = CentsToDollars(paymentIntent.Amount.Value),
+                            AmountAuthorized = AmountFromMinorUnits(paymentIntent.Amount.Value),
                             PaymentStatus = GetPaymentStatus(paymentIntent)
                         },
                         new Dictionary<string, string>
@@ -277,7 +277,7 @@ namespace Vendr.PaymentProviders.Stripe
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntentOptions = new PaymentIntentCaptureOptions
                 {
-                    AmountToCapture = DollarsToCents(order.TransactionInfo.AmountAuthorized.Value),
+                    AmountToCapture = AmountToMinorUnits(order.TransactionInfo.AmountAuthorized.Value),
                 };
                 var paymentIntent = paymentIntentService.Capture(paymentIntentId, paymentIntentOptions);
 
