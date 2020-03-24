@@ -74,10 +74,10 @@ namespace Vendr.PaymentProviders.Stripe
             SortOrder = 1400)]
         public string LiveWebhookSigningSecret { get; set; }
 
-        [PaymentProviderSetting(Name = "Mode", 
-            Description = "Set whether to process payments in live or test mode.",
-            SortOrder = 1000000)]
-        public StripePaymentProviderMode Mode { get; set; }
+        [PaymentProviderSetting(Name = "Test Mode",
+            Description = "Set whether to process payments in test mode.",
+            SortOrder = 10000)]
+        public bool TestMode { get; set; }
 
         // Advanced settings
 

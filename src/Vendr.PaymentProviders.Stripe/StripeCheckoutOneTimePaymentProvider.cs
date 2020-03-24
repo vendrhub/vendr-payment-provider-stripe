@@ -39,8 +39,8 @@ namespace Vendr.PaymentProviders.Stripe
         {
             try
             {
-                var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
-                var webhookSigningSecret = settings.Mode == StripePaymentProviderMode.Test ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var webhookSigningSecret = settings.TestMode ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
 
                 ConfigureStripe(secretKey);
 
@@ -63,8 +63,8 @@ namespace Vendr.PaymentProviders.Stripe
 
         public override PaymentFormResult GenerateForm(OrderReadOnly order, string continueUrl, string cancelUrl, string callbackUrl, StripeCheckoutOneTimeSettings settings)
         {
-            var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
-            var publicKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestPublicKey : settings.LivePublicKey;
+            var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+            var publicKey = settings.TestMode ? settings.TestPublicKey : settings.LivePublicKey;
 
             ConfigureStripe(secretKey);
 
@@ -173,8 +173,8 @@ namespace Vendr.PaymentProviders.Stripe
 
             try
             {
-                var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
-                var webhookSigningSecret = settings.Mode == StripePaymentProviderMode.Test ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var webhookSigningSecret = settings.TestMode ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
 
                 ConfigureStripe(secretKey);
 
@@ -214,7 +214,7 @@ namespace Vendr.PaymentProviders.Stripe
         {
             try
             {
-                var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
@@ -270,7 +270,7 @@ namespace Vendr.PaymentProviders.Stripe
                 if (string.IsNullOrWhiteSpace(paymentIntentId))
                     return null;
 
-                var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
@@ -313,7 +313,7 @@ namespace Vendr.PaymentProviders.Stripe
                 if (string.IsNullOrWhiteSpace(chargeId))
                     return null;
 
-                var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
@@ -351,7 +351,7 @@ namespace Vendr.PaymentProviders.Stripe
                 var stripePaymentIntentId = order.Properties["stripePaymentIntentId"];
                 if (!string.IsNullOrWhiteSpace(stripePaymentIntentId))
                 {
-                    var secretKey = settings.Mode == StripePaymentProviderMode.Test ? settings.TestSecretKey : settings.LiveSecretKey;
+                    var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
 
                     ConfigureStripe(secretKey);
 
