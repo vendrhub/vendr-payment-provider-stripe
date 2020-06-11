@@ -84,8 +84,8 @@ namespace Vendr.PaymentProviders.Stripe
 
             var lineItems = new List<SessionLineItemOptions>();
 
-            foreach (var orderLine in order.OrderLines.Where(x => x.Properties.ContainsKey("isSubscription")
-                && (x.Properties["isSubscription"] == "1" || x.Properties["isSubscription"] == "true" || x.Properties["isSubscription"] == "True")))
+            foreach (var orderLine in order.OrderLines.Where(x => x.Properties.ContainsKey("isRecurring")
+                && (x.Properties["isRecurring"] == "1" || x.Properties["isRecurring"] == "true" || x.Properties["isRecurring"] == "True")))
             {
                 var orderLinePrice = AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
 
@@ -113,8 +113,8 @@ namespace Vendr.PaymentProviders.Stripe
                         UnitAmount = orderLinePrice,
                         Recurring = new SessionLineItemPriceDataRecurringOptions
                         {
-                            Interval = orderLine.Properties["stripeSubscriptionInterval"].Value.ToLower(),
-                            IntervalCount = long.TryParse(orderLine.Properties["stripeSubscriptionIntervalCount"], out var intervalCount) ? intervalCount : 1
+                            Interval = orderLine.Properties["stripeRecurringInterval"].Value.ToLower(),
+                            IntervalCount = long.TryParse(orderLine.Properties["stripeRecurringIntervalCount"], out var intervalCount) ? intervalCount : 1
                         }
                     };
 
