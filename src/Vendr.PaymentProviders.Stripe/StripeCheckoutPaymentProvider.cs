@@ -78,14 +78,13 @@ namespace Vendr.PaymentProviders.Stripe
             var customerService = new CustomerService();
             var customer = customerService.Create(customerOptions);
 
-            var hasSubscriptionItems = false;
-            long subscriptionsTotalPrice = 0;
+            var hasRecurringItems = false;
+            long recurringTotalPrice = 0;
             long orderTotalPrice = AmountToMinorUnits(order.TotalPrice.Value.WithTax);
 
             var lineItems = new List<SessionLineItemOptions>();
 
-            foreach (var orderLine in order.OrderLines.Where(x => x.Properties.ContainsKey("isRecurring")
-                && (x.Properties["isRecurring"] == "1" || x.Properties["isRecurring"] == "true" || x.Properties["isRecurring"] == "True")))
+            foreach (var orderLine in order.OrderLines.Where(IsRecurringOrderLine))
             {
                 var orderLinePrice = AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
 
@@ -143,11 +142,11 @@ namespace Vendr.PaymentProviders.Stripe
 
                 lineItems.Add(lineItemOpts);
 
-                subscriptionsTotalPrice += orderLinePrice;
-                hasSubscriptionItems = true;
+                recurringTotalPrice += orderLinePrice;
+                hasRecurringItems = true;
             }
 
-            if (subscriptionsTotalPrice < orderTotalPrice)
+            if (recurringTotalPrice < orderTotalPrice)
             {
                 // If the total value of the order is not covered by the subscription items
                 // then we add another line item for the remainder of the order value
@@ -157,20 +156,20 @@ namespace Vendr.PaymentProviders.Stripe
                     PriceData = new SessionLineItemPriceDataOptions
                     {
                         Currency = currency.Code,
-                        UnitAmount = orderTotalPrice - subscriptionsTotalPrice,
+                        UnitAmount = orderTotalPrice - recurringTotalPrice,
                         ProductData = new SessionLineItemPriceDataProductDataOptions
                         {
-                            Name = hasSubscriptionItems
+                            Name = hasRecurringItems
                                 ? !string.IsNullOrWhiteSpace(settings.OneTimeItemsHeading) ? settings.OneTimeItemsHeading : "One time items"
                                 : !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
-                            Description = hasSubscriptionItems || string.IsNullOrWhiteSpace(settings.OrderHeading) ? null : "#" + order.OrderNumber,
+                            Description = hasRecurringItems || string.IsNullOrWhiteSpace(settings.OrderHeading) ? null : "#" + order.OrderNumber,
                         }
                     },
                     Quantity = 1
                 };
 
                 // Only add the order image if this is a one time only payment
-                if (!hasSubscriptionItems && !string.IsNullOrWhiteSpace(settings.OrderImage))
+                if (!hasRecurringItems && !string.IsNullOrWhiteSpace(settings.OrderImage))
                 {
                     lineItemOpts.PriceData.ProductData.Images = new[] { settings.OrderImage }.ToList();
                 }
@@ -185,7 +184,7 @@ namespace Vendr.PaymentProviders.Stripe
                     "card",
                 },
                 LineItems = lineItems,
-                Mode = hasSubscriptionItems 
+                Mode = hasRecurringItems 
                     ? "subscription"
                     : "payment",
                 ClientReferenceId = order.GenerateOrderReference(),
@@ -193,7 +192,7 @@ namespace Vendr.PaymentProviders.Stripe
                 CancelUrl = cancelUrl,
             };
 
-            if (hasSubscriptionItems)
+            if (hasRecurringItems)
             {
                 sessionOptions.SubscriptionData = new SessionSubscriptionDataOptions
                 {
@@ -523,6 +522,42 @@ namespace Vendr.PaymentProviders.Stripe
             }
 
             return ApiResult.Empty;
+        }
+
+        public override bool CanProcessOrder(OrderReadOnly order, StripeCheckoutSettings settings, ref string errorMessage)
+        {
+            long recurringTotalPrice = 0;
+            bool hasRecurringItems = false;
+            long orderTotalPriceWithPaymentMethodFee = AmountToMinorUnits(order.TotalPrice.Value.WithTax - order.PaymentInfo.TotalPrice.Value.WithTax);
+
+            var lineItems = new List<SessionLineItemOptions>();
+
+            foreach (var orderLine in order.OrderLines.Where(IsRecurringOrderLine))
+            {
+                recurringTotalPrice += AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
+                hasRecurringItems = true;
+            }
+
+            // If we don't have any recurring items then we can process the order fine
+            if (!hasRecurringItems)
+                return true;
+
+            // If we do have recurring items, make sure the total price of the order
+            // is greater than the value of all recurring order items
+            if (recurringTotalPrice <= orderTotalPriceWithPaymentMethodFee)
+                return true;
+
+            errorMessage = "Cannot process orders where the total value of recurring order items is greater than the order total";
+
+            return false;
+        }
+
+        private bool IsRecurringOrderLine(OrderLineReadOnly orderLine)
+        {
+            return orderLine.Properties.ContainsKey("isRecurring")
+                && (orderLine.Properties["isRecurring"] == "1" 
+                    || orderLine.Properties["isRecurring"] == "true" 
+                    || orderLine.Properties["isRecurring"] == "True");
         }
     }
 }
