@@ -84,13 +84,13 @@ namespace Vendr.PaymentProviders.Stripe
         [PaymentProviderSetting(Name = "Order Heading",
             Description = "A heading to display on the order summary of the Stripe Checkout screen.",
             IsAdvanced = true,
-            SortOrder = 1000001)]
+            SortOrder = 1000100)]
         public string OrderHeading { get; set; }
 
         [PaymentProviderSetting(Name = "Order Image",
             Description = "The URL of an image to display on the order summary of the Stripe Checkout screen. Should be 480x480px.",
             IsAdvanced = true,
-            SortOrder = 1000002)]
+            SortOrder = 1000200)]
         public string OrderImage { get; set; }
     }
 }
