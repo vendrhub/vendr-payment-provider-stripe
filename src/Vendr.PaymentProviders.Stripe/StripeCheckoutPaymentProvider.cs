@@ -30,6 +30,7 @@ namespace Vendr.PaymentProviders.Stripe
 
         public override IEnumerable<TransactionMetaDataDefinition> TransactionMetaDataDefinitions => new[]{
             new TransactionMetaDataDefinition("stripeSessionId", "Stripe Session ID"),
+            new TransactionMetaDataDefinition("stripeCustomerId", "Stripe Customer ID"),
             new TransactionMetaDataDefinition("stripePaymentIntentId", "Stripe Payment Intent ID"),
             new TransactionMetaDataDefinition("stripeSubscriptionId", "Stripe Subscription ID"),
             new TransactionMetaDataDefinition("stripeChargeId", "Stripe Charge ID"),
@@ -48,35 +49,73 @@ namespace Vendr.PaymentProviders.Stripe
                 ? Vendr.Services.CountryService.GetCountry(order.PaymentInfo.CountryId.Value)
                 : null;
 
-            var customerOptions = new CustomerCreateOptions
-            {
-                Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
-                Email = order.CustomerInfo.Email,
-                Description = order.OrderNumber,
-                Address = new AddressOptions
-                {
-                    Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
-                        ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                    Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
-                        ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
-                    City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
-                        ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
-                    State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
-                        ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
-                    PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
-                        ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
-                    Country = billingCountry?.Code
-                }
-            };
-            
-            customerOptions.Metadata = new Dictionary<string, string>
-            {
-                { "billingCountry", customerOptions.Address.Country },
-                { "billingZipCode", customerOptions.Address.PostalCode }
-            };
-
+            Customer customer;
             var customerService = new CustomerService();
-            var customer = customerService.Create(customerOptions);
+
+            // If we've created a customer already, keep using it but update it incase
+            // any of the billing details have changed
+            if (!string.IsNullOrWhiteSpace(order.Properties["stripeCustomerId"]))
+            {
+                var customerOptions = new CustomerUpdateOptions
+                {
+                    Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
+                    Email = order.CustomerInfo.Email,
+                    Description = order.OrderNumber,
+                    Address = new AddressOptions
+                    {
+                        Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                            ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                            ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
+                        City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
+                            ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
+                        State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
+                            ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
+                        PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
+                            ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
+                        Country = billingCountry?.Code
+                    }
+                };
+
+                customerOptions.Metadata = new Dictionary<string, string>
+                {
+                    { "billingCountry", customerOptions.Address.Country },
+                    { "billingZipCode", customerOptions.Address.PostalCode }
+                };
+
+                customer = customerService.Update(order.Properties["stripeCustomerId"].Value, customerOptions);
+            }
+            else
+            {
+                var customerOptions = new CustomerCreateOptions
+                {
+                    Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
+                    Email = order.CustomerInfo.Email,
+                    Description = order.OrderNumber,
+                    Address = new AddressOptions
+                    {
+                        Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
+                        City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
+                        ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
+                        State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
+                        ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
+                        PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
+                        ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
+                        Country = billingCountry?.Code
+                    }
+                };
+
+                customerOptions.Metadata = new Dictionary<string, string>
+                {
+                    { "billingCountry", customerOptions.Address.Country },
+                    { "billingZipCode", customerOptions.Address.PostalCode }
+                };
+
+                customer = customerService.Create(customerOptions);
+            }
 
             var hasRecurringItems = false;
             long recurringTotalPrice = 0;
@@ -205,7 +244,7 @@ namespace Vendr.PaymentProviders.Stripe
                         // this is the only way it can be validated via Radar
                         // Block if ::orderBillingCountry:: != :card_country:
                         { "orderBillingCountry", billingCountry.Code?.ToUpper() },
-                        { "orderBillingZipCode", customerOptions.Address.PostalCode }
+                        { "orderBillingZipCode", customer.Address.PostalCode }
                     }
                 };
             }
@@ -223,7 +262,7 @@ namespace Vendr.PaymentProviders.Stripe
                         // this is the only way it can be validated via Radar
                         // Block if ::orderBillingCountry:: != :card_country:
                         { "orderBillingCountry", billingCountry.Code?.ToUpper() },
-                        { "orderBillingZipCode", customerOptions.Address.PostalCode }
+                        { "orderBillingZipCode", customer.Address.PostalCode }
                     }
                 };
             }
@@ -238,6 +277,11 @@ namespace Vendr.PaymentProviders.Stripe
 
             return new PaymentFormResult()
             {
+                MetaData = new Dictionary<string, string>
+                {
+                    { "stripeSessionId", session.Id },
+                    { "stripeCustomerId", session.CustomerId }
+                },
                 Form = new PaymentForm(continueUrl, FormMethod.Post)
                     .WithAttribute("onsubmit", "return handleStripeCheckout(event)")
                     .WithJsFile("https://js.stripe.com/v3/")
@@ -290,6 +334,7 @@ namespace Vendr.PaymentProviders.Stripe
                             new Dictionary<string, string>
                             {
                                 { "stripeSessionId", stripeSession.Id },
+                                { "stripeCustomerId", stripeSession.CustomerId },
                                 { "stripePaymentIntentId", stripeSession.PaymentIntentId },
                                 { "stripeSubscriptionId", stripeSession.SubscriptionId },
                                 { "stripeChargeId", GetTransactionId(paymentIntent) },
@@ -317,6 +362,7 @@ namespace Vendr.PaymentProviders.Stripe
                             new Dictionary<string, string>
                             {
                                 { "stripeSessionId", stripeSession.Id },
+                                { "stripeCustomerId", stripeSession.CustomerId },
                                 { "stripePaymentIntentId", invoice.PaymentIntentId },
                                 { "stripeSubscriptionId", stripeSession.SubscriptionId },
                                 { "stripeChargeId", invoice.ChargeId },
