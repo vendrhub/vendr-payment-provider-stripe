@@ -17,7 +17,7 @@ namespace Vendr.PaymentProviders.Stripe
         // Advanced settings
 
         [PaymentProviderSetting(Name = "One-Time Items Heading",
-            Description = "A heading to display for the total one-time payment items order line item when the order consists of both subscription and one-time payment items",
+            Description = "A heading to display for the total one-time payment items order line when the order consists of both subscription and one-time payment items",
             IsAdvanced = true,
             SortOrder = 1000210)]
         public string OneTimeItemsHeading { get; set; }
