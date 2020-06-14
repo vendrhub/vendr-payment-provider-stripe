@@ -232,13 +232,13 @@ namespace Vendr.PaymentProviders.Stripe
                     Quantity = 1
                 };
 
-                // Only add the order image if this is a one time only payment
-                if (!hasRecurringItems && !string.IsNullOrWhiteSpace(settings.OrderImage))
-                {
-                    lineItemOpts.PriceData.ProductData.Images = new[] { settings.OrderImage }.ToList();
-                }
-
                 lineItems.Add(lineItemOpts);
+            }
+            
+            // Add image to the first item (only if it's not a product link)
+            if (lineItems.Count > 0 && lineItems[0].PriceData?.ProductData != null)
+            {
+                lineItems[0].PriceData.ProductData.Images = new[] { settings.OrderImage }.ToList();
             }
 
             var sessionOptions = new SessionCreateOptions
