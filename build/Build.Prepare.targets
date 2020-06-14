@@ -11,7 +11,8 @@
             <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\$(ProjectName).xml" />
             <!-- BEGIN DLL DEPENDENCIES-->
             <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Stripe.net.dll" />
-            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Microsoft.Bcl.AsyncInterfaces" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\Microsoft.Bcl.AsyncInterfaces.dll" />
+            <BinFiles Include="$(SourceDir)\Vendr.*\bin\$(BuildConfiguration)\System.Threading.Tasks.Extensions.dll" />
             <!-- END DLL DEPENDENCIES-->
             <AssetFiles Include="$(RootDir)\assets\*" />
             <VendrLicenseFile Include="$(RootDir)\LICENSE.md" />
