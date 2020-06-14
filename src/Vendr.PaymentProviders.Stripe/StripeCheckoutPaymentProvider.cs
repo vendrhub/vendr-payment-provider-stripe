@@ -77,6 +77,9 @@ namespace Vendr.PaymentProviders.Stripe
                     }
                 };
 
+                // Pass billing country / zipcode as meta data as currently
+                // this is the only way it can be validated via Radar
+                // Block if ::customer:billingCountry:: != :card_country:
                 customerOptions.Metadata = new Dictionary<string, string>
                 {
                     { "billingCountry", customerOptions.Address.Country },
@@ -108,6 +111,9 @@ namespace Vendr.PaymentProviders.Stripe
                     }
                 };
 
+                // Pass billing country / zipcode as meta data as currently
+                // this is the only way it can be validated via Radar
+                // Block if ::customer:billingCountry:: != :card_country:
                 customerOptions.Metadata = new Dictionary<string, string>
                 {
                     { "billingCountry", customerOptions.Address.Country },
@@ -121,12 +127,7 @@ namespace Vendr.PaymentProviders.Stripe
             {
                 { "orderReference", order.GenerateOrderReference() },
                 { "orderId", order.Id.ToString("D") },
-                { "orderNumber", order.OrderNumber },
-                // Pass billing country / zipecode as meta data as currently
-                // this is the only way it can be validated via Radar
-                // Block if ::orderBillingCountry:: != :card_country:
-                { "orderBillingCountry", billingCountry.Code?.ToUpper() },
-                { "orderBillingZipCode", customer.Address.PostalCode }
+                { "orderNumber", order.OrderNumber }
             };
 
             if (!string.IsNullOrWhiteSpace(settings.OrderProperties))
