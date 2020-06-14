@@ -237,7 +237,7 @@ namespace Vendr.PaymentProviders.Stripe
             }
             
             // Add image to the first item (only if it's not a product link)
-            if (lineItems.Count > 0 && lineItems[0].PriceData?.ProductData != null)
+            if (!string.IsNullOrWhiteSpace(settings.OrderImage) && lineItems.Count > 0 && lineItems[0].PriceData?.ProductData != null)
             {
                 lineItems[0].PriceData.ProductData.Images = new[] { settings.OrderImage }.ToList();
             }
