@@ -117,6 +117,31 @@ namespace Vendr.PaymentProviders.Stripe
                 customer = customerService.Create(customerOptions);
             }
 
+            var metaData = new Dictionary<string, string>
+            {
+                { "orderReference", order.GenerateOrderReference() },
+                { "orderId", order.Id.ToString("D") },
+                { "orderNumber", order.OrderNumber },
+                // Pass billing country / zipecode as meta data as currently
+                // this is the only way it can be validated via Radar
+                // Block if ::orderBillingCountry:: != :card_country:
+                { "orderBillingCountry", billingCountry.Code?.ToUpper() },
+                { "orderBillingZipCode", customer.Address.PostalCode }
+            };
+
+            if (!string.IsNullOrWhiteSpace(settings.OrderProperties))
+            {
+                foreach (var alias in settings.OrderProperties.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x)))
+                {
+                    if (!string.IsNullOrWhiteSpace(order.Properties[alias]))
+                    {
+                        metaData.Add(alias, order.Properties[alias]);
+                    }
+                }
+            }
+
             var hasRecurringItems = false;
             long recurringTotalPrice = 0;
             long orderTotalPrice = AmountToMinorUnits(order.TotalPrice.Value.WithTax);
@@ -235,17 +260,7 @@ namespace Vendr.PaymentProviders.Stripe
             {
                 sessionOptions.SubscriptionData = new SessionSubscriptionDataOptions
                 {
-                    Metadata = new Dictionary<string, string>
-                    {
-                        { "orderReference", order.GenerateOrderReference() },
-                        { "orderId", order.Id.ToString("D") },
-                        { "orderNumber", order.OrderNumber },
-                        // Pass billing country / zipecode as meta data as currently
-                        // this is the only way it can be validated via Radar
-                        // Block if ::orderBillingCountry:: != :card_country:
-                        { "orderBillingCountry", billingCountry.Code?.ToUpper() },
-                        { "orderBillingZipCode", customer.Address.PostalCode }
-                    }
+                    Metadata = metaData
                 };
             }
             else
@@ -253,17 +268,7 @@ namespace Vendr.PaymentProviders.Stripe
                 sessionOptions.PaymentIntentData = new SessionPaymentIntentDataOptions
                 {
                     CaptureMethod = settings.Capture ? "automatic" : "manual",
-                    Metadata = new Dictionary<string, string>
-                    {
-                        { "orderReference", order.GenerateOrderReference() },
-                        { "orderId", order.Id.ToString("D") },
-                        { "orderNumber", order.OrderNumber },
-                        // Pass billing country / zipecode as meta data as currently
-                        // this is the only way it can be validated via Radar
-                        // Block if ::orderBillingCountry:: != :card_country:
-                        { "orderBillingCountry", billingCountry.Code?.ToUpper() },
-                        { "orderBillingZipCode", customer.Address.PostalCode }
-                    }
+                    Metadata = metaData
                 };
             }
 

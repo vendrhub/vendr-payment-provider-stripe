@@ -21,5 +21,11 @@ namespace Vendr.PaymentProviders.Stripe
             IsAdvanced = true,
             SortOrder = 1000210)]
         public string OneTimeItemsHeading { get; set; }
+
+        [PaymentProviderSetting(Name = "Order Properties",
+            Description = "A comma separated list of order properties to copy to the transactions meta data",
+            IsAdvanced = true,
+            SortOrder = 1000300)]
+        public string OrderProperties { get; set; }
     }
 }
