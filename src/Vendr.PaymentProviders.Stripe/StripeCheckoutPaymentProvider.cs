@@ -606,9 +606,10 @@ namespace Vendr.PaymentProviders.Stripe
 
         private bool IsRecurringOrderLine(OrderLineReadOnly orderLine)
         {
-            return orderLine.Properties.ContainsKey("isRecurring")
-                && !string.IsNullOrWhiteSpace(orderLine.Properties["isRecurring"])
-                && (orderLine.Properties["isRecurring"] == "1" || orderLine.Properties["isRecurring"].Value.Equals("true", StringComparison.OrdinalIgnoreCase));
+            return orderLine.Properties.ContainsKey(Constants.Properties.Product.IsRecurringPropertyAlias)
+                && !string.IsNullOrWhiteSpace(orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias])
+                && (orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias] == "1" 
+                    || orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias].Value.Equals("true", StringComparison.OrdinalIgnoreCase));
         }
     }
 }
