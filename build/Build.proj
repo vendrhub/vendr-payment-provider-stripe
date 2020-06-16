@@ -18,6 +18,8 @@
         <PaymentProviderName>Stripe</PaymentProviderName>
         <ProjectName>Vendr.PaymentProviders.$(PaymentProviderName)</ProjectName>
         <MinUmbracoVersion>8.2.0</MinUmbracoVersion>
+
+        <GitVersionConfig>$(BuildToolsDir)\GitVersion\GitVersion.yml</GitVersionConfig>
 	</PropertyGroup>
 
     <ItemGroup>
