@@ -1,5 +1,10 @@
 branches:
   master:
     regex: ^ma[ster|in]
+  feature:
+    mode: ContinuousDeployment
   hotfix:
+    mode: ContinuousDeployment
+  pull-request:
+    regex: ^(pull|pull\-requests|pr|patch)[/-]
     mode: ContinuousDeployment
