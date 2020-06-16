@@ -3,3 +3,5 @@ branches:
     regex: ^ma[ster|in]
   hotfix:
     mode: ContinuousDeployment
+  pull-request:
+    mode: ContinuousDeployment
