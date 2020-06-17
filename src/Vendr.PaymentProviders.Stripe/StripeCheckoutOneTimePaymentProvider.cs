@@ -13,7 +13,8 @@ using Vendr.Core.Web.PaymentProviders;
 
 namespace Vendr.PaymentProviders.Stripe
 {
-    [PaymentProvider("stripe-checkout-onetime", "[OBSOLETE] Stripe Checkout (One Time)", "Stripe Checkout payment provider for one time payments")]
+    [Obsolete("Use the StripeCheckoutPaymentProvider instead")]
+    [PaymentProvider("stripe-checkout-onetime", "Stripe Checkout (One Time)", "Stripe Checkout payment provider for one time payments")]
     public class StripeCheckoutOneTimePaymentProvider : StripePaymentProviderBase<StripeCheckoutOneTimeSettings>
     {
         public StripeCheckoutOneTimePaymentProvider(VendrContext vendr)
