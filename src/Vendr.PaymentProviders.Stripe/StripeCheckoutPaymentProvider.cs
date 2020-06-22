@@ -510,11 +510,15 @@ namespace Vendr.PaymentProviders.Stripe
                 if (!string.IsNullOrWhiteSpace(order.Properties["stripeSubscriptionId"]))
                 {
                     var subscriptionService = new SubscriptionService();
-                    subscriptionService.Cancel(order.Properties["stripeSubscriptionId"], new SubscriptionCancelOptions
+                    var subscription = subscriptionService.Get(order.Properties["stripeSubscriptionId"]);
+                    if (subscription != null)
                     {
-                        InvoiceNow = false,
-                        Prorate = false
-                    });
+                        subscriptionService.Cancel(order.Properties["stripeSubscriptionId"], new SubscriptionCancelOptions
+                        {
+                            InvoiceNow = false,
+                            Prorate = false
+                        });
+                    }
                 }
 
                 return new ApiResult()
