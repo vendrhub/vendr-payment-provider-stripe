@@ -13,6 +13,7 @@ using Vendr.Core.Web.PaymentProviders;
 
 namespace Vendr.PaymentProviders.Stripe
 {
+    [Obsolete("Use the StripeCheckoutPaymentProvider instead")]
     [PaymentProvider("stripe-checkout-onetime", "Stripe Checkout (One Time)", "Stripe Checkout payment provider for one time payments")]
     public class StripeCheckoutOneTimePaymentProvider : StripePaymentProviderBase<StripeCheckoutOneTimeSettings>
     {
@@ -34,32 +35,6 @@ namespace Vendr.PaymentProviders.Stripe
             new TransactionMetaDataDefinition("stripeChargeId", "Stripe Charge ID"),
             new TransactionMetaDataDefinition("stripeCardCountry", "Stripe Card Country")
         };
-
-        public override OrderReference GetOrderReference(HttpRequestBase request, StripeCheckoutOneTimeSettings settings)
-        {
-            try
-            {
-                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
-                var webhookSigningSecret = settings.TestMode ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
-
-                ConfigureStripe(secretKey);
-
-                var stripeEvent = GetWebhookStripeEvent(request, webhookSigningSecret);
-                if (stripeEvent != null && stripeEvent.Type == Events.CheckoutSessionCompleted)
-                {
-                    if (stripeEvent.Data?.Object?.Instance is Session stripeSession && !string.IsNullOrWhiteSpace(stripeSession.ClientReferenceId))
-                    {
-                        return OrderReference.Parse(stripeSession.ClientReferenceId);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - GetOrderReference");
-            }
-
-            return base.GetOrderReference(request, settings);
-        }
 
         public override PaymentFormResult GenerateForm(OrderReadOnly order, string continueUrl, string cancelUrl, string callbackUrl, StripeCheckoutOneTimeSettings settings)
         {
@@ -125,6 +100,7 @@ namespace Vendr.PaymentProviders.Stripe
                         { "orderBillingZipCode", customerOptions.Address.PostalCode }
                     }
                 },
+                Mode = "payment",
                 ClientReferenceId = order.GenerateOrderReference(),
                 SuccessUrl = continueUrl,
                 CancelUrl = cancelUrl,
@@ -189,7 +165,7 @@ namespace Vendr.PaymentProviders.Stripe
                         return CallbackResult.Ok(new TransactionInfo
                         {
                             TransactionId = GetTransactionId(paymentIntent),
-                            AmountAuthorized = AmountFromMinorUnits(paymentIntent.Amount.Value),
+                            AmountAuthorized = AmountFromMinorUnits(paymentIntent.Amount),
                             PaymentStatus = GetPaymentStatus(paymentIntent)
                         },
                         new Dictionary<string, string>
@@ -382,80 +358,6 @@ namespace Vendr.PaymentProviders.Stripe
             return ApiResult.Empty;
         }
 
-        protected string GetTransactionId(PaymentIntent paymentIntent)
-        {
-            return (paymentIntent.Charges?.Data?.Count ?? 0) > 0
-                ? GetTransactionId(paymentIntent.Charges.Data[0])
-                : null;
-        }
-
-        protected string GetTransactionId(Charge charge)
-        {
-            return charge?.Id;
-        }
-
-        protected PaymentStatus GetPaymentStatus(PaymentIntent paymentIntent)
-        {
-            // Possible PaymentIntent statuses:
-            // - requires_payment_method
-            // - requires_confirmation
-            // - requires_action
-            // - processing
-            // - requires_capture
-            // - canceled
-            // - succeeded
-
-            if (paymentIntent.Status == "canceled")
-                return PaymentStatus.Cancelled;
-
-            if (paymentIntent.Status == "requires_capture")
-                return PaymentStatus.Authorized;
-
-            if (paymentIntent.Status == "succeeded")
-            {
-                if (paymentIntent.Charges.Data.Any())
-                {
-                    return GetPaymentStatus(paymentIntent.Charges.Data[0]);
-                }
-                else
-                {
-                    return PaymentStatus.Captured;
-                }
-            }
-
-            return PaymentStatus.Initialized;
-        }
-
-        protected PaymentStatus GetPaymentStatus(Charge charge)
-        {
-            PaymentStatus paymentState = PaymentStatus.Initialized;
-
-            if (charge == null)
-                return paymentState;
-
-            if (charge.Paid)
-            {
-                paymentState = PaymentStatus.Authorized;
-
-                if (charge.Captured != null && charge.Captured.Value)
-                {
-                    paymentState = PaymentStatus.Captured;
-
-                    if (charge.Refunded)
-                    {
-                        paymentState = PaymentStatus.Refunded;
-                    }
-                }
-                else
-                {
-                    if (charge.Refunded)
-                    {
-                        paymentState = PaymentStatus.Cancelled;
-                    }
-                }
-            }
-
-            return paymentState;
-        }
+        
     }
 }
