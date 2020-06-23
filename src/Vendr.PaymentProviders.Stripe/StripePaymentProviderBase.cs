@@ -3,6 +3,7 @@ using Stripe;
 using Stripe.Checkout;
 using System;
 using System.IO;
+using System.Linq;
 using System.Web;
 using Vendr.Core;
 using Vendr.Core.Models;
@@ -31,6 +32,32 @@ namespace Vendr.PaymentProviders.Stripe
         public override string GetErrorUrl(OrderReadOnly order, TSettings settings)
         {
             return settings.ErrorUrl;
+        }
+
+        public override OrderReference GetOrderReference(HttpRequestBase request, TSettings settings)
+        {
+            try
+            {
+                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var webhookSigningSecret = settings.TestMode ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
+
+                ConfigureStripe(secretKey);
+
+                var stripeEvent = GetWebhookStripeEvent(request, webhookSigningSecret);
+                if (stripeEvent != null && stripeEvent.Type == Events.CheckoutSessionCompleted)
+                {
+                    if (stripeEvent.Data?.Object?.Instance is Session stripeSession && !string.IsNullOrWhiteSpace(stripeSession.ClientReferenceId))
+                    {
+                        return OrderReference.Parse(stripeSession.ClientReferenceId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - GetOrderReference");
+            }
+
+            return base.GetOrderReference(request, settings);
         }
 
         protected StripeWebhookEvent GetWebhookStripeEvent(HttpRequestBase request, string webhookSigningSecret)
@@ -105,6 +132,119 @@ namespace Vendr.PaymentProviders.Stripe
         {
             StripeConfiguration.ApiKey = apiKey;
             StripeConfiguration.MaxNetworkRetries = 2;
+        }
+
+        protected string GetTransactionId(PaymentIntent paymentIntent)
+        {
+            return (paymentIntent.Charges?.Data?.Count ?? 0) > 0
+                ? GetTransactionId(paymentIntent.Charges.Data[0])
+                : null;
+        }
+
+        protected string GetTransactionId(Invoice invoice)
+        {
+            return GetTransactionId(invoice.Charge);
+        }
+
+        protected string GetTransactionId(Charge charge)
+        {
+            return charge?.Id;
+        }
+
+        protected PaymentStatus GetPaymentStatus(Invoice invoice)
+        {
+            // Possible Invoice statuses:
+            // - draft
+            // - open
+            // - paid
+            // - void
+            // - uncollectible
+
+            if (invoice.Status == "void")
+                return PaymentStatus.Cancelled;
+
+            if (invoice.Status == "open")
+                return PaymentStatus.Authorized;
+
+            if (invoice.Status == "paid")
+            {
+                if (invoice.PaymentIntent != null)
+                    return GetPaymentStatus(invoice.PaymentIntent);
+
+                if (invoice.Charge != null)
+                    return GetPaymentStatus(invoice.Charge);
+
+                return PaymentStatus.Captured;
+            }
+
+            if (invoice.Status == "uncollectible")
+                return PaymentStatus.Error;
+
+            return PaymentStatus.Initialized;
+        }
+
+        protected PaymentStatus GetPaymentStatus(PaymentIntent paymentIntent)
+        {
+            // Possible PaymentIntent statuses:
+            // - requires_payment_method
+            // - requires_confirmation
+            // - requires_action
+            // - processing
+            // - requires_capture
+            // - canceled
+            // - succeeded
+
+            if (paymentIntent.Status == "canceled")
+                return PaymentStatus.Cancelled;
+
+            if (paymentIntent.Status == "requires_capture")
+                return PaymentStatus.Authorized;
+
+            if (paymentIntent.Status == "succeeded")
+            {
+                if (paymentIntent.Charges.Data.Any())
+                {
+                    return GetPaymentStatus(paymentIntent.Charges.Data[0]);
+                }
+                else
+                {
+                    return PaymentStatus.Captured;
+                }
+            }
+
+            return PaymentStatus.Initialized;
+        }
+
+        protected PaymentStatus GetPaymentStatus(Charge charge)
+        {
+            PaymentStatus paymentState = PaymentStatus.Initialized;
+
+            if (charge == null)
+                return paymentState;
+
+            if (charge.Paid)
+            {
+                paymentState = PaymentStatus.Authorized;
+
+                if (charge.Captured)
+                {
+                    paymentState = PaymentStatus.Captured;
+
+                    if (charge.Refunded)
+                    {
+                        paymentState = PaymentStatus.Refunded;
+                    }
+                }
+                else
+                {
+                    if (charge.Refunded)
+                    {
+                        paymentState = PaymentStatus.Cancelled;
+                    }
+                }
+            }
+
+            return paymentState;
         }
     }
 }
