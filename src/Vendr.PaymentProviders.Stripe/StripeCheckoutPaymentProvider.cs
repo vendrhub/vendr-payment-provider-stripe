@@ -65,7 +65,7 @@ namespace Vendr.PaymentProviders.Stripe
                     {
                         Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
                             ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
                             ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
                         City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
                             ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
@@ -99,7 +99,7 @@ namespace Vendr.PaymentProviders.Stripe
                     {
                         Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
                         ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
                         ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
                         City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
                         ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
