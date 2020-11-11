@@ -17,7 +17,7 @@
         <dependencies>
             <group targetFramework="net472">
                 <dependency id="Stripe.net" version="[37.8.0,37.999999)" />
-                <dependency id="Vendr.Core.Web" version="[1.2.4,1.999999)" />
+                <dependency id="Vendr.Core.Web" version="[1.4.0-rc0000,1.999999)" />
                 <!--<dependency id="UmbracoCms.Core" version="[$MinUmbracoVersion$]" />-->
             </group>
         </dependencies>
