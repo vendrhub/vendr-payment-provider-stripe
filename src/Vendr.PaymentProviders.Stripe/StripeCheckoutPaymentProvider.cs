@@ -65,7 +65,7 @@ namespace Vendr.PaymentProviders.Stripe
                     {
                         Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
                             ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
                             ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
                         City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
                             ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
@@ -99,7 +99,7 @@ namespace Vendr.PaymentProviders.Stripe
                     {
                         Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
                         ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
+                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
                         ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
                         City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
                         ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
@@ -145,7 +145,7 @@ namespace Vendr.PaymentProviders.Stripe
 
             var hasRecurringItems = false;
             long recurringTotalPrice = 0;
-            long orderTotalPrice = AmountToMinorUnits(order.TotalPrice.Value.WithTax);
+            long orderTotalPrice = AmountToMinorUnits(order.TransactionAmount.Value);
 
             var lineItems = new List<SessionLineItemOptions>();
 
@@ -584,7 +584,7 @@ namespace Vendr.PaymentProviders.Stripe
         {
             long recurringTotalPrice = 0;
             bool hasRecurringItems = false;
-            long orderTotalPriceWithPaymentMethodFee = AmountToMinorUnits(order.TotalPrice.Value.WithTax - order.PaymentInfo.TotalPrice.Value.WithTax);
+            long orderTotalPriceWithPaymentMethodFee = AmountToMinorUnits(order.TransactionAmount.Value - order.PaymentInfo.TotalPrice.Value.WithTax);
 
             var lineItems = new List<SessionLineItemOptions>();
 
