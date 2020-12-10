@@ -82,7 +82,7 @@ namespace Vendr.PaymentProviders.Stripe
                     new SessionLineItemOptions {
                         Name = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
                         Description = !string.IsNullOrWhiteSpace(settings.OrderHeading) ? "#" + order.OrderNumber : null,
-                        Amount = AmountToMinorUnits(order.TotalPrice.Value.WithTax),
+                        Amount = AmountToMinorUnits(order.TransactionAmount.Value),
                         Currency = currency.Code,
                         Quantity = 1
                     },
