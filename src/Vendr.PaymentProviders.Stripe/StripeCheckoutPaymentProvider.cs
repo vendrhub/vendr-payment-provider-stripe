@@ -245,9 +245,14 @@ namespace Vendr.PaymentProviders.Stripe
             var sessionOptions = new SessionCreateOptions
             {
                 Customer = customer.Id,
-                PaymentMethodTypes = new List<string> {
-                    "card",
-                },
+                PaymentMethodTypes = !string.IsNullOrWhiteSpace(settings.PaymentMethodTypes)
+                    ? settings.PaymentMethodTypes.Split(',')
+                        .Select(tag => tag.Trim())
+                        .Where(tag => !string.IsNullOrEmpty(tag))
+                        .ToList()
+                    : new List<string> {
+                        "card",
+                    },
                 LineItems = lineItems,
                 Mode = hasRecurringItems 
                     ? "subscription"

@@ -27,5 +27,11 @@ namespace Vendr.PaymentProviders.Stripe
             IsAdvanced = true,
             SortOrder = 1000300)]
         public string OrderProperties { get; set; }
+
+        [PaymentProviderSetting(Name = "Payment Method Types",
+            Description = "A comma separated list of Stripe payment method types to use. Defaults to just 'card' if left empty.",
+            IsAdvanced = true,
+            SortOrder = 1000400)]
+        public string PaymentMethodTypes { get; set; }
     }
 }
