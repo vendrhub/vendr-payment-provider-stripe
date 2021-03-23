@@ -245,7 +245,7 @@ namespace Vendr.PaymentProviders.Stripe
                             Name = hasRecurringItems
                                 ? !string.IsNullOrWhiteSpace(settings.OneTimeItemsHeading) ? settings.OneTimeItemsHeading : "One time items (inc Tax)"
                                 : !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
-                            Description = hasRecurringItems || string.IsNullOrWhiteSpace(settings.OrderHeading) ? null : "#" + order.OrderNumber,
+                            Description = hasRecurringItems || !string.IsNullOrWhiteSpace(settings.OrderHeading) ? "#" + order.OrderNumber : null,
                         }
                     },
                     Quantity = 1
