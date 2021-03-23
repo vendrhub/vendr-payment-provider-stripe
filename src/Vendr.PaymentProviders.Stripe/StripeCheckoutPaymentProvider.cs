@@ -151,7 +151,7 @@ namespace Vendr.PaymentProviders.Stripe
 
             foreach (var orderLine in order.OrderLines.Where(IsRecurringOrderLine))
             {
-                var orderLinePrice = AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
+                var orderLineTaxRate = orderLine.TaxRate * 100;
 
                 var lineItemOpts = new SessionLineItemOptions();
 
@@ -165,16 +165,25 @@ namespace Vendr.PaymentProviders.Stripe
                     // If we are using a stripe price, then assume the quantity of the line item means
                     // the quantity of the stripe price you want to buy.
                     lineItemOpts.Quantity = (long)orderLine.Quantity;
+
+                    // Because we are in charge of what taxes apply, we need to setup a tax rate
+                    // to ensure the price defined in stripe has the relevant taxes applied
+                    var stripePricesIncludeTax = PropertyIsTrue(orderLine.Properties, "stripePriceIncludesTax");
+                    var stripeTaxRate = GetOrCreateStripeTaxRate("Subscription Tax", orderLineTaxRate, stripePricesIncludeTax);
+                    if (stripeTaxRate != null)
+                    {
+                        lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                    }
                 }
                 else
                 {
                     // We don't have a stripe price defined on the order line
-                    // so we'll create one on the fly using th order lines total
+                    // so we'll create one on the fly using the order lines total
                     // value
                     var priceData = new SessionLineItemPriceDataOptions
                     {
                         Currency = currency.Code,
-                        UnitAmount = orderLinePrice,
+                        UnitAmount = AmountToMinorUnits(orderLine.TotalPrice.Value.WithoutTax / orderLine.Quantity), // Without tax as Stripe will apply the tax
                         Recurring = new SessionLineItemPriceDataRecurringOptions
                         {
                             Interval = orderLine.Properties["stripeRecurringInterval"].Value.ToLower(),
@@ -202,12 +211,21 @@ namespace Vendr.PaymentProviders.Stripe
 
                     // For dynamic subscriptions, regardless of line item quantity, treat the line
                     // as a single subscription item with one price being the line items total price
-                    lineItemOpts.Quantity = 1;
+                    lineItemOpts.Quantity = (long)orderLine.Quantity;
+
+                    // If we define the price, then create tax rates that are set to be inclusive
+                    // as this means that we can pass prices inclusive of tax and Stripe works out
+                    // the pre-tax price which would be less suseptable to rounding inconsistancies
+                    var stripeTaxRate = GetOrCreateStripeTaxRate("Subscription Tax", orderLineTaxRate, false);
+                    if (stripeTaxRate != null)
+                    {
+                        lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                    }
                 }
 
                 lineItems.Add(lineItemOpts);
 
-                recurringTotalPrice += orderLinePrice;
+                recurringTotalPrice += AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
                 hasRecurringItems = true;
             }
 
@@ -225,7 +243,7 @@ namespace Vendr.PaymentProviders.Stripe
                         ProductData = new SessionLineItemPriceDataProductDataOptions
                         {
                             Name = hasRecurringItems
-                                ? !string.IsNullOrWhiteSpace(settings.OneTimeItemsHeading) ? settings.OneTimeItemsHeading : "One time items"
+                                ? !string.IsNullOrWhiteSpace(settings.OneTimeItemsHeading) ? settings.OneTimeItemsHeading : "One time items (inc Tax)"
                                 : !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
                             Description = hasRecurringItems || string.IsNullOrWhiteSpace(settings.OrderHeading) ? null : "#" + order.OrderNumber,
                         }
@@ -615,10 +633,14 @@ namespace Vendr.PaymentProviders.Stripe
 
         private bool IsRecurringOrderLine(OrderLineReadOnly orderLine)
         {
-            return orderLine.Properties.ContainsKey(Constants.Properties.Product.IsRecurringPropertyAlias)
-                && !string.IsNullOrWhiteSpace(orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias])
-                && (orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias] == "1" 
-                    || orderLine.Properties[Constants.Properties.Product.IsRecurringPropertyAlias].Value.Equals("true", StringComparison.OrdinalIgnoreCase));
+            return PropertyIsTrue(orderLine.Properties, Constants.Properties.Product.IsRecurringPropertyAlias);
+        }
+
+        private bool PropertyIsTrue(IReadOnlyDictionary<string, PropertyValue> props, string propAlias)
+        {
+            return props.ContainsKey(propAlias)
+                && !string.IsNullOrWhiteSpace(props[propAlias])
+                && (props[propAlias] == "1" || props[propAlias].Value.Equals("true", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

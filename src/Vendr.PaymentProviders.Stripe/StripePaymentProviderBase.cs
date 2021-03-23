@@ -2,6 +2,7 @@
 using Stripe;
 using Stripe.Checkout;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Web;
@@ -9,6 +10,8 @@ using Vendr.Core;
 using Vendr.Core.Models;
 using Vendr.Core.Web.Api;
 using Vendr.Core.Web.PaymentProviders;
+
+using StripeTaxRate = Stripe.TaxRate;
 
 namespace Vendr.PaymentProviders.Stripe
 {
@@ -58,6 +61,54 @@ namespace Vendr.PaymentProviders.Stripe
             }
 
             return base.GetOrderReference(request, settings);
+        }
+
+        protected StripeTaxRate GetOrCreateStripeTaxRate(string taxName, decimal percentage, bool inclusive)
+        {
+            var taxRateService = new TaxRateService();
+            var stripeTaxRates = new List<StripeTaxRate>();
+
+            if (HttpContext.Current.Items["Vendr_StripeTaxRates"] != null)
+            {
+                stripeTaxRates = (List<StripeTaxRate>)HttpContext.Current.Items["Vendr_StripeTaxRates"];
+            }
+
+            if (stripeTaxRates.Count > 0)
+            {
+                var taxRate = GetStripeTaxRate(stripeTaxRates, taxName, percentage, inclusive);
+                if (taxRate != null)
+                    return taxRate;
+            }
+
+            HttpContext.Current.Items["Vendr_StripeTaxRates"] = stripeTaxRates = taxRateService.List(new TaxRateListOptions
+            {
+                Active = true
+            }).ToList();
+
+            if (stripeTaxRates.Count > 0)
+            {
+                var taxRate = GetStripeTaxRate(stripeTaxRates, taxName, percentage, inclusive);
+                if (taxRate != null)
+                    return taxRate;
+            }
+
+            var newTaxRate = taxRateService.Create(new TaxRateCreateOptions
+            {
+                DisplayName = taxName,
+                Percentage = percentage,
+                Inclusive = inclusive,
+            });
+
+            stripeTaxRates.Add(newTaxRate);
+
+            HttpContext.Current.Items["Vendr_StripeTaxRates"] = stripeTaxRates;
+
+            return newTaxRate;
+        }
+
+        private StripeTaxRate GetStripeTaxRate(IEnumerable<StripeTaxRate> taxRates, string taxName, decimal percentage, bool inclusive)
+        {
+            return taxRates.FirstOrDefault(x => x.Percentage == percentage && x.Inclusive == inclusive && x.DisplayName == taxName);
         }
 
         protected StripeWebhookEvent GetWebhookStripeEvent(HttpRequestBase request, string webhookSigningSecret)
