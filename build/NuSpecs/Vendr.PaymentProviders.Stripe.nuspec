@@ -13,7 +13,7 @@
         <description>Stripe payment provider for Vendr, the eCommerce package for Umbrao v8+</description>
         <summary>Stripe payment provider for Vendr, the eCommerce package for Umbrao v8+</summary>
         <language>en-US</language>
-        <tags>umbraco ecommerce vendr</tags>
+        <tags>umbraco ecommerce vendr stripe</tags>
         <dependencies>
             <group targetFramework="net472">
                 <dependency id="Stripe.net" version="[37.8.0,37.999999)" />
