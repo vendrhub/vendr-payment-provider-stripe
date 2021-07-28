@@ -1,4 +1,4 @@
-﻿using Vendr.Core.Web.PaymentProviders;
+﻿using Vendr.Core.PaymentProviders;
 
 namespace Vendr.PaymentProviders.Stripe
 {

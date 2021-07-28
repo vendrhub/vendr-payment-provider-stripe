@@ -3,21 +3,21 @@ using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
-using System.Web.Mvc;
+using System.Threading.Tasks;
+using Vendr.Common.Logging;
 using Vendr.Core;
+using Vendr.Core.Api;
 using Vendr.Core.Models;
-using Vendr.Core.Web;
-using Vendr.Core.Web.Api;
-using Vendr.Core.Web.PaymentProviders;
+using Vendr.Core.PaymentProviders;
+using Vendr.Extensions;
 
 namespace Vendr.PaymentProviders.Stripe
 {
     [PaymentProvider("stripe-checkout", "Stripe Checkout", "Stripe Checkout payment provider for one time and subscription payments")]
-    public class StripeCheckoutPaymentProvider : StripePaymentProviderBase<StripeCheckoutSettings>
+    public class StripeCheckoutPaymentProvider : StripePaymentProviderBase<StripeCheckoutPaymentProvider, StripeCheckoutSettings>
     {
-        public StripeCheckoutPaymentProvider(VendrContext vendr)
-            : base(vendr)
+        public StripeCheckoutPaymentProvider(VendrContext vendr, ILogger<StripeCheckoutPaymentProvider> logger)
+            : base(vendr, logger)
         { }
 
         public override bool CanFetchPaymentStatus => true;
@@ -37,16 +37,16 @@ namespace Vendr.PaymentProviders.Stripe
             new TransactionMetaDataDefinition("stripeCardCountry", "Stripe Card Country")
         };
 
-        public override PaymentFormResult GenerateForm(OrderReadOnly order, string continueUrl, string cancelUrl, string callbackUrl, StripeCheckoutSettings settings)
+        public override async Task<PaymentFormResult> GenerateFormAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
-            var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
-            var publicKey = settings.TestMode ? settings.TestPublicKey : settings.LivePublicKey;
+            var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
+            var publicKey = ctx.Settings.TestMode ? ctx.Settings.TestPublicKey : ctx.Settings.LivePublicKey;
 
             ConfigureStripe(secretKey);
 
-            var currency = Vendr.Services.CurrencyService.GetCurrency(order.CurrencyId);
-            var billingCountry = order.PaymentInfo.CountryId.HasValue
-                ? Vendr.Services.CountryService.GetCountry(order.PaymentInfo.CountryId.Value)
+            var currency = Vendr.Services.CurrencyService.GetCurrency(ctx.Order.CurrencyId);
+            var billingCountry = ctx.Order.PaymentInfo.CountryId.HasValue
+                ? Vendr.Services.CountryService.GetCountry(ctx.Order.PaymentInfo.CountryId.Value)
                 : null;
 
             Customer customer;
@@ -54,25 +54,25 @@ namespace Vendr.PaymentProviders.Stripe
 
             // If we've created a customer already, keep using it but update it incase
             // any of the billing details have changed
-            if (!string.IsNullOrWhiteSpace(order.Properties["stripeCustomerId"]))
+            if (!string.IsNullOrWhiteSpace(ctx.Order.Properties["stripeCustomerId"]))
             {
                 var customerOptions = new CustomerUpdateOptions
                 {
-                    Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
-                    Email = order.CustomerInfo.Email,
-                    Description = order.OrderNumber,
+                    Name = $"{ctx.Order.CustomerInfo.FirstName} {ctx.Order.CustomerInfo.LastName}",
+                    Email = ctx.Order.CustomerInfo.Email,
+                    Description = ctx.Order.OrderNumber,
                     Address = new AddressOptions
                     {
-                        Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
-                            ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
-                            ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
-                        City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
-                            ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
-                        State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
-                            ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
-                        PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
-                            ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
+                        Line1 = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressLine1PropertyAlias)
+                            ? ctx.Order.Properties[ctx.Settings.BillingAddressLine1PropertyAlias] : "",
+                        Line2 = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressLine2PropertyAlias)
+                            ? ctx.Order.Properties[ctx.Settings.BillingAddressLine2PropertyAlias] : "",
+                        City = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressCityPropertyAlias)
+                            ? ctx.Order.Properties[ctx.Settings.BillingAddressCityPropertyAlias] : "",
+                        State = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressStatePropertyAlias)
+                            ? ctx.Order.Properties[ctx.Settings.BillingAddressStatePropertyAlias] : "",
+                        PostalCode = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressZipCodePropertyAlias)
+                            ? ctx.Order.Properties[ctx.Settings.BillingAddressZipCodePropertyAlias] : "",
                         Country = billingCountry?.Code
                     }
                 };
@@ -86,27 +86,27 @@ namespace Vendr.PaymentProviders.Stripe
                     { "billingZipCode", customerOptions.Address.PostalCode }
                 };
 
-                customer = customerService.Update(order.Properties["stripeCustomerId"].Value, customerOptions);
+                customer = customerService.Update(ctx.Order.Properties["stripeCustomerId"].Value, customerOptions);
             }
             else
             {
                 var customerOptions = new CustomerCreateOptions
                 {
-                    Name = $"{order.CustomerInfo.FirstName} {order.CustomerInfo.LastName}",
-                    Email = order.CustomerInfo.Email,
-                    Description = order.OrderNumber,
+                    Name = $"{ctx.Order.CustomerInfo.FirstName} {ctx.Order.CustomerInfo.LastName}",
+                    Email = ctx.Order.CustomerInfo.Email,
+                    Description = ctx.Order.OrderNumber,
                     Address = new AddressOptions
                     {
-                        Line1 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine1PropertyAlias)
-                        ? order.Properties[settings.BillingAddressLine1PropertyAlias] : "",
-                        Line2 = !string.IsNullOrWhiteSpace(settings.BillingAddressLine2PropertyAlias)
-                        ? order.Properties[settings.BillingAddressLine2PropertyAlias] : "",
-                        City = !string.IsNullOrWhiteSpace(settings.BillingAddressCityPropertyAlias)
-                        ? order.Properties[settings.BillingAddressCityPropertyAlias] : "",
-                        State = !string.IsNullOrWhiteSpace(settings.BillingAddressStatePropertyAlias)
-                        ? order.Properties[settings.BillingAddressStatePropertyAlias] : "",
-                        PostalCode = !string.IsNullOrWhiteSpace(settings.BillingAddressZipCodePropertyAlias)
-                        ? order.Properties[settings.BillingAddressZipCodePropertyAlias] : "",
+                        Line1 = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressLine1PropertyAlias)
+                        ? ctx.Order.Properties[ctx.Settings.BillingAddressLine1PropertyAlias] : "",
+                        Line2 = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressLine2PropertyAlias)
+                        ? ctx.Order.Properties[ctx.Settings.BillingAddressLine2PropertyAlias] : "",
+                        City = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressCityPropertyAlias)
+                        ? ctx.Order.Properties[ctx.Settings.BillingAddressCityPropertyAlias] : "",
+                        State = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressStatePropertyAlias)
+                        ? ctx.Order.Properties[ctx.Settings.BillingAddressStatePropertyAlias] : "",
+                        PostalCode = !string.IsNullOrWhiteSpace(ctx.Settings.BillingAddressZipCodePropertyAlias)
+                        ? ctx.Order.Properties[ctx.Settings.BillingAddressZipCodePropertyAlias] : "",
                         Country = billingCountry?.Code
                     }
                 };
@@ -125,31 +125,31 @@ namespace Vendr.PaymentProviders.Stripe
 
             var metaData = new Dictionary<string, string>
             {
-                { "orderReference", order.GenerateOrderReference() },
-                { "orderId", order.Id.ToString("D") },
-                { "orderNumber", order.OrderNumber }
+                { "ctx.OrderReference", ctx.Order.GenerateOrderReference() },
+                { "ctx.OrderId", ctx.Order.Id.ToString("D") },
+                { "ctx.OrderNumber", ctx.Order.OrderNumber }
             };
 
-            if (!string.IsNullOrWhiteSpace(settings.OrderProperties))
+            if (!string.IsNullOrWhiteSpace(ctx.Settings.OrderProperties))
             {
-                foreach (var alias in settings.OrderProperties.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                foreach (var alias in ctx.Settings.OrderProperties.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => x.Trim())
                     .Where(x => !string.IsNullOrWhiteSpace(x)))
                 {
-                    if (!string.IsNullOrWhiteSpace(order.Properties[alias]))
+                    if (!string.IsNullOrWhiteSpace(ctx.Order.Properties[alias]))
                     {
-                        metaData.Add(alias, order.Properties[alias]);
+                        metaData.Add(alias, ctx.Order.Properties[alias]);
                     }
                 }
             }
 
             var hasRecurringItems = false;
             long recurringTotalPrice = 0;
-            long orderTotalPrice = AmountToMinorUnits(order.TransactionAmount.Value);
+            long orderTotalPrice = AmountToMinorUnits(ctx.Order.TransactionAmount.Value);
 
             var lineItems = new List<SessionLineItemOptions>();
 
-            foreach (var orderLine in order.OrderLines.Where(IsRecurringOrderLine))
+            foreach (var orderLine in ctx.Order.OrderLines.Where(IsRecurringOrderLine))
             {
                 var orderLineTaxRate = orderLine.TaxRate * 100;
 
@@ -169,7 +169,7 @@ namespace Vendr.PaymentProviders.Stripe
                     // Because we are in charge of what taxes apply, we need to setup a tax rate
                     // to ensure the price defined in stripe has the relevant taxes applied
                     var stripePricesIncludeTax = PropertyIsTrue(orderLine.Properties, "stripePriceIncludesTax");
-                    var stripeTaxRate = GetOrCreateStripeTaxRate("Subscription Tax", orderLineTaxRate, stripePricesIncludeTax);
+                    var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, stripePricesIncludeTax);
                     if (stripeTaxRate != null)
                     {
                         lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
@@ -177,8 +177,8 @@ namespace Vendr.PaymentProviders.Stripe
                 }
                 else
                 {
-                    // We don't have a stripe price defined on the order line
-                    // so we'll create one on the fly using the order lines total
+                    // We don't have a stripe price defined on the ctx.Order line
+                    // so we'll create one on the fly using the ctx.Order lines total
                     // value
                     var priceData = new SessionLineItemPriceDataOptions
                     {
@@ -216,7 +216,7 @@ namespace Vendr.PaymentProviders.Stripe
                     // If we define the price, then create tax rates that are set to be inclusive
                     // as this means that we can pass prices inclusive of tax and Stripe works out
                     // the pre-tax price which would be less suseptable to rounding inconsistancies
-                    var stripeTaxRate = GetOrCreateStripeTaxRate("Subscription Tax", orderLineTaxRate, false);
+                    var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, false);
                     if (stripeTaxRate != null)
                     {
                         lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
@@ -231,8 +231,8 @@ namespace Vendr.PaymentProviders.Stripe
 
             if (recurringTotalPrice < orderTotalPrice)
             {
-                // If the total value of the order is not covered by the subscription items
-                // then we add another line item for the remainder of the order value
+                // If the total value of the ctx.Order is not covered by the subscription items
+                // then we add another line item for the remainder of the ctx.Order value
 
                 var lineItemOpts = new SessionLineItemOptions
                 {
@@ -243,9 +243,9 @@ namespace Vendr.PaymentProviders.Stripe
                         ProductData = new SessionLineItemPriceDataProductDataOptions
                         {
                             Name = hasRecurringItems
-                                ? !string.IsNullOrWhiteSpace(settings.OneTimeItemsHeading) ? settings.OneTimeItemsHeading : "One time items (inc Tax)"
-                                : !string.IsNullOrWhiteSpace(settings.OrderHeading) ? settings.OrderHeading : "#" + order.OrderNumber,
-                            Description = hasRecurringItems || !string.IsNullOrWhiteSpace(settings.OrderHeading) ? "#" + order.OrderNumber : null,
+                                ? !string.IsNullOrWhiteSpace(ctx.Settings.OneTimeItemsHeading) ? ctx.Settings.OneTimeItemsHeading : "One time items (inc Tax)"
+                                : !string.IsNullOrWhiteSpace(ctx.Settings.OrderHeading) ? ctx.Settings.OrderHeading : "#" + ctx.Order.OrderNumber,
+                            Description = hasRecurringItems || !string.IsNullOrWhiteSpace(ctx.Settings.OrderHeading) ? "#" + ctx.Order.OrderNumber : null,
                         }
                     },
                     Quantity = 1
@@ -255,16 +255,16 @@ namespace Vendr.PaymentProviders.Stripe
             }
             
             // Add image to the first item (only if it's not a product link)
-            if (!string.IsNullOrWhiteSpace(settings.OrderImage) && lineItems.Count > 0 && lineItems[0].PriceData?.ProductData != null)
+            if (!string.IsNullOrWhiteSpace(ctx.Settings.OrderImage) && lineItems.Count > 0 && lineItems[0].PriceData?.ProductData != null)
             {
-                lineItems[0].PriceData.ProductData.Images = new[] { settings.OrderImage }.ToList();
+                lineItems[0].PriceData.ProductData.Images = new[] { ctx.Settings.OrderImage }.ToList();
             }
 
             var sessionOptions = new SessionCreateOptions
             {
                 Customer = customer.Id,
-                PaymentMethodTypes = !string.IsNullOrWhiteSpace(settings.PaymentMethodTypes)
-                    ? settings.PaymentMethodTypes.Split(',')
+                PaymentMethodTypes = !string.IsNullOrWhiteSpace(ctx.Settings.PaymentMethodTypes)
+                    ? ctx.Settings.PaymentMethodTypes.Split(',')
                         .Select(tag => tag.Trim())
                         .Where(tag => !string.IsNullOrEmpty(tag))
                         .ToList()
@@ -275,9 +275,9 @@ namespace Vendr.PaymentProviders.Stripe
                 Mode = hasRecurringItems 
                     ? "subscription"
                     : "payment",
-                ClientReferenceId = order.GenerateOrderReference(),
-                SuccessUrl = continueUrl,
-                CancelUrl = cancelUrl,
+                ClientReferenceId = ctx.Order.GenerateOrderReference(),
+                SuccessUrl = ctx.Urls.ContinueUrl,
+                CancelUrl = ctx.Urls.CancelUrl
             };
 
             if (hasRecurringItems)
@@ -291,18 +291,18 @@ namespace Vendr.PaymentProviders.Stripe
             {
                 sessionOptions.PaymentIntentData = new SessionPaymentIntentDataOptions
                 {
-                    CaptureMethod = settings.Capture ? "automatic" : "manual",
+                    CaptureMethod = ctx.Settings.Capture ? "automatic" : "manual",
                     Metadata = metaData
                 };
             }
 
-            if (settings.SendStripeReceipt)
+            if (ctx.Settings.SendStripeReceipt)
             {
-                sessionOptions.PaymentIntentData.ReceiptEmail = order.CustomerInfo.Email;
+                sessionOptions.PaymentIntentData.ReceiptEmail = ctx.Order.CustomerInfo.Email;
             }
 
             var sessionService = new SessionService();
-            var session = sessionService.Create(sessionOptions);
+            var session = await sessionService.CreateAsync(sessionOptions);
 
             return new PaymentFormResult()
             {
@@ -311,7 +311,7 @@ namespace Vendr.PaymentProviders.Stripe
                     { "stripeSessionId", session.Id },
                     { "stripeCustomerId", session.CustomerId }
                 },
-                Form = new PaymentForm(continueUrl, FormMethod.Post)
+                Form = new PaymentForm(ctx.Urls.ContinueUrl, PaymentFormMethod.Post)
                     .WithAttribute("onsubmit", "return handleStripeCheckout(event)")
                     .WithJsFile("https://js.stripe.com/v3/")
                     .WithJs(@"
@@ -332,19 +332,19 @@ namespace Vendr.PaymentProviders.Stripe
             };
         }
 
-        public override CallbackResult ProcessCallback(OrderReadOnly order, HttpRequestBase request, StripeCheckoutSettings settings)
+        public override async Task<CallbackResult> ProcessCallbackAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
             // The ProcessCallback method is only intendid to be called via a Stripe Webhook and so
-            // it's job is to process the webhook event and finalize / update the order accordingly
+            // it's job is to process the webhook event and finalize / update the ctx.Order accordingly
 
             try
             {
-                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
-                var webhookSigningSecret = settings.TestMode ? settings.TestWebhookSigningSecret : settings.LiveWebhookSigningSecret;
+                var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
+                var webhookSigningSecret = ctx.Settings.TestMode ? ctx.Settings.TestWebhookSigningSecret : ctx.Settings.LiveWebhookSigningSecret;
 
                 ConfigureStripe(secretKey);
 
-                var stripeEvent = GetWebhookStripeEvent(request, webhookSigningSecret);
+                var stripeEvent = await GetWebhookStripeEventAsync(ctx, webhookSigningSecret);
                 if (stripeEvent != null && stripeEvent.Type == Events.CheckoutSessionCompleted)
                 {
                     if (stripeEvent.Data?.Object?.Instance is Session stripeSession)
@@ -352,7 +352,7 @@ namespace Vendr.PaymentProviders.Stripe
                         if (stripeSession.Mode == "payment")
                         {
                             var paymentIntentService = new PaymentIntentService();
-                            var paymentIntent = paymentIntentService.Get(stripeSession.PaymentIntentId);
+                            var paymentIntent = await paymentIntentService.GetAsync(stripeSession.PaymentIntentId);
 
                             return CallbackResult.Ok(new TransactionInfo
                             {
@@ -373,7 +373,7 @@ namespace Vendr.PaymentProviders.Stripe
                         else if (stripeSession.Mode == "subscription")
                         {
                             var subscriptionService = new SubscriptionService();
-                            var subscription = subscriptionService.Get(stripeSession.SubscriptionId, new SubscriptionGetOptions { 
+                            var subscription = await subscriptionService.GetAsync(stripeSession.SubscriptionId, new SubscriptionGetOptions { 
                                 Expand = new List<string>(new[] { 
                                     "latest_invoice",
                                     "latest_invoice.charge",
@@ -403,26 +403,26 @@ namespace Vendr.PaymentProviders.Stripe
             }
             catch (Exception ex)
             {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - ProcessCallback");
+                _logger.Error(ex, "Stripe - ProcessCallback");
             }
 
             return CallbackResult.BadRequest();
         }
 
-        public override ApiResult FetchPaymentStatus(OrderReadOnly order, StripeCheckoutSettings settings)
+        public override async Task<ApiResult> FetchPaymentStatusAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
             try
             {
-                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
                 // See if we have a payment intent to work from
-                var paymentIntentId = order.Properties["stripePaymentIntentId"];
+                var paymentIntentId = ctx.Order.Properties["stripePaymentIntentId"];
                 if (!string.IsNullOrWhiteSpace(paymentIntentId))
                 {
                     var paymentIntentService = new PaymentIntentService();
-                    var paymentIntent = paymentIntentService.Get(paymentIntentId);
+                    var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
 
                     return new ApiResult()
                     {
@@ -435,11 +435,11 @@ namespace Vendr.PaymentProviders.Stripe
                 }
 
                 // No payment intent, so look for a charge
-                var chargeId = order.Properties["stripeChargeId"];
+                var chargeId = ctx.Order.Properties["stripeChargeId"];
                 if (!string.IsNullOrWhiteSpace(chargeId))
                 {
                     var chargeService = new ChargeService();
-                    var charge = chargeService.Get(chargeId);
+                    var charge = await chargeService.GetAsync(chargeId);
 
                     return new ApiResult()
                     {
@@ -453,13 +453,13 @@ namespace Vendr.PaymentProviders.Stripe
             }
             catch (Exception ex)
             {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - FetchPaymentStatus");
+                _logger.Error(ex, "Stripe - FetchPaymentStatus");
             }
 
             return ApiResult.Empty;
         }
 
-        public override ApiResult CapturePayment(OrderReadOnly order, StripeCheckoutSettings settings)
+        public override async Task<ApiResult> CapturePaymentAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
             // NOTE: Subscriptions aren't currently abled to be "authorized" so the capture
             // routine shouldn't be relevant for subscription payments at this point
@@ -468,20 +468,20 @@ namespace Vendr.PaymentProviders.Stripe
             {
                 // We can only capture a payment intent, so make sure we have one
                 // otherwise there is nothing we can do
-                var paymentIntentId = order.Properties["stripePaymentIntentId"];
+                var paymentIntentId = ctx.Order.Properties["stripePaymentIntentId"];
                 if (string.IsNullOrWhiteSpace(paymentIntentId))
                     return null;
 
-                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntentOptions = new PaymentIntentCaptureOptions
                 {
-                    AmountToCapture = AmountToMinorUnits(order.TransactionInfo.AmountAuthorized.Value),
+                    AmountToCapture = AmountToMinorUnits(ctx.Order.TransactionInfo.AmountAuthorized.Value),
                 };
-                var paymentIntent = paymentIntentService.Capture(paymentIntentId, paymentIntentOptions);
+                var paymentIntent = await paymentIntentService.CaptureAsync(paymentIntentId, paymentIntentOptions);
 
                 return new ApiResult()
                 {
@@ -499,23 +499,23 @@ namespace Vendr.PaymentProviders.Stripe
             }
             catch (Exception ex)
             {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - CapturePayment");
+                _logger.Error(ex, "Stripe - CapturePayment");
             }
 
             return ApiResult.Empty;
         }
 
-        public override ApiResult RefundPayment(OrderReadOnly order, StripeCheckoutSettings settings)
+        public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
             try
             {
                 // We can only refund a captured charge, so make sure we have one
                 // otherwise there is nothing we can do
-                var chargeId = order.Properties["stripeChargeId"];
+                var chargeId = ctx.Order.Properties["stripeChargeId"];
                 if (string.IsNullOrWhiteSpace(chargeId))
                     return null;
 
-                var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
 
                 ConfigureStripe(secretKey);
 
@@ -526,17 +526,17 @@ namespace Vendr.PaymentProviders.Stripe
                 };
 
                 var refund = refundService.Create(refundCreateOptions);
-                var charge = refund.Charge ?? new ChargeService().Get(refund.ChargeId);
+                var charge = refund.Charge ?? await new ChargeService().GetAsync(refund.ChargeId);
 
-                // If we have a subscription then we'll cancel it as refunding an order
+                // If we have a subscription then we'll cancel it as refunding an ctx.Order
                 // should effecitvely undo any purchase
-                if (!string.IsNullOrWhiteSpace(order.Properties["stripeSubscriptionId"]))
+                if (!string.IsNullOrWhiteSpace(ctx.Order.Properties["stripeSubscriptionId"]))
                 {
                     var subscriptionService = new SubscriptionService();
-                    var subscription = subscriptionService.Get(order.Properties["stripeSubscriptionId"]);
+                    var subscription = await subscriptionService.GetAsync(ctx.Order.Properties["stripeSubscriptionId"]);
                     if (subscription != null)
                     {
-                        subscriptionService.Cancel(order.Properties["stripeSubscriptionId"], new SubscriptionCancelOptions
+                        subscriptionService.Cancel(ctx.Order.Properties["stripeSubscriptionId"], new SubscriptionCancelOptions
                         {
                             InvoiceNow = false,
                             Prorate = false
@@ -555,13 +555,13 @@ namespace Vendr.PaymentProviders.Stripe
             }
             catch (Exception ex)
             {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - RefundPayment");
+                _logger.Error(ex, "Stripe - RefundPayment");
             }
 
             return ApiResult.Empty;
         }
 
-        public override ApiResult CancelPayment(OrderReadOnly order, StripeCheckoutSettings settings)
+        public override async Task<ApiResult> CancelPaymentAsync(PaymentProviderContext<StripeCheckoutSettings> ctx)
         {
             // NOTE: Subscriptions aren't currently abled to be "authorized" so the cancel
             // routine shouldn't be relevant for subscription payments at this point
@@ -569,15 +569,15 @@ namespace Vendr.PaymentProviders.Stripe
             try
             {
                 // See if there is a payment intent to cancel
-                var stripePaymentIntentId = order.Properties["stripePaymentIntentId"];
+                var stripePaymentIntentId = ctx.Order.Properties["stripePaymentIntentId"];
                 if (!string.IsNullOrWhiteSpace(stripePaymentIntentId))
                 {
-                    var secretKey = settings.TestMode ? settings.TestSecretKey : settings.LiveSecretKey;
+                    var secretKey = ctx.Settings.TestMode ? ctx.Settings.TestSecretKey : ctx.Settings.LiveSecretKey;
 
                     ConfigureStripe(secretKey);
 
                     var paymentIntentService = new PaymentIntentService();
-                    var intent = paymentIntentService.Cancel(stripePaymentIntentId);
+                    var intent = await paymentIntentService.CancelAsync(stripePaymentIntentId);
 
                     return new ApiResult()
                     {
@@ -591,44 +591,16 @@ namespace Vendr.PaymentProviders.Stripe
 
                 // If there is a charge, then it's too late to cancel
                 // so we attempt to refund it instead
-                var chargeId = order.Properties["stripeChargeId"];
+                var chargeId = ctx.Order.Properties["stripeChargeId"];
                 if (chargeId != null)
-                    return RefundPayment(order, settings);
+                    return await RefundPaymentAsync(ctx);
             }
             catch (Exception ex)
             {
-                Vendr.Log.Error<StripeCheckoutOneTimePaymentProvider>(ex, "Stripe - CancelPayment");
+                _logger.Error(ex, "Stripe - CancelPayment");
             }
 
             return ApiResult.Empty;
-        }
-
-        public override bool CanProcessOrder(OrderReadOnly order, StripeCheckoutSettings settings, ref string errorMessage)
-        {
-            long recurringTotalPrice = 0;
-            bool hasRecurringItems = false;
-            long orderTotalPriceWithPaymentMethodFee = AmountToMinorUnits(order.TransactionAmount.Value - order.PaymentInfo.TotalPrice.Value.WithTax);
-
-            var lineItems = new List<SessionLineItemOptions>();
-
-            foreach (var orderLine in order.OrderLines.Where(IsRecurringOrderLine))
-            {
-                recurringTotalPrice += AmountToMinorUnits(orderLine.TotalPrice.Value.WithTax);
-                hasRecurringItems = true;
-            }
-
-            // If we don't have any recurring items then we can process the order fine
-            if (!hasRecurringItems)
-                return true;
-
-            // If we do have recurring items, make sure the total price of the order
-            // is greater than the value of all recurring order items
-            if (recurringTotalPrice <= orderTotalPriceWithPaymentMethodFee)
-                return true;
-
-            errorMessage = "Cannot process orders where the total value of recurring order items is greater than the order total";
-
-            return false;
         }
 
         private bool IsRecurringOrderLine(OrderLineReadOnly orderLine)
