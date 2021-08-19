@@ -14,13 +14,10 @@ using static Nuke.Common.Tools.DotNet.DotNetTasks;
 [ShutdownDotNetAfterServerBuild]
 class Build : NukeBuild
 {
-    public static int Main () => Execute<Build>(x => x.Compile);
+    public static int Main () => Execute<Build>(x => x.Pack);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
-
-    [Parameter("Azure pipelines build artifacts staging directory")]
-    readonly AbsolutePath BuildArtifactStagingDirectory;
 
     [Solution] 
     readonly Solution Solution;
@@ -29,14 +26,13 @@ class Build : NukeBuild
     readonly GitVersion GitVersion;
 
     AbsolutePath SourceDirectory => RootDirectory / "src";
-    AbsolutePath ArtifactsDirectory => BuildArtifactStagingDirectory ?? RootDirectory / "artifacts";
+    AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 
     // =================================================
     // Clean
     // =================================================
 
     Target Clean => _ => _
-        .Before(Restore)
         .Executes(() =>
         {
             SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
@@ -48,6 +44,7 @@ class Build : NukeBuild
     // =================================================
 
     Target Restore => _ => _
+        .DependsOn(Clean)
         .Executes(() =>
         {
             DotNetRestore(s => s
@@ -76,13 +73,11 @@ class Build : NukeBuild
         .Produces(ArtifactsDirectory)
         .Executes(() =>
         {
-            // Package SDK style projects
             DotNetPack(c => c
                 .SetProject(Solution)
                 .SetConfiguration(Configuration)
                 .SetVersion(GitVersion.NuGetVersionV2)
                 .SetOutputDirectory(ArtifactsDirectory)
-                //.SetIncludeSymbols(true)
                 .SetNoBuild(true));
         });
 

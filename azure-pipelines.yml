@@ -30,13 +30,18 @@ stages:
     pool:
       vmImage: $(vmImageName)
     jobs:
-      - task: CmdLine@2
-        inputs:
-          script: './build.cmd Pack'
-      - task: PublishBuildArtifacts@1
-        inputs:
-          pathToPublish: '$(Build.ArtifactStagingDirectory)'
-          artifactName: artifacts
+    
+      - job: build
+        displayName: 'Build'
+        dependsOn: [ ]
+        steps:
+          - task: CmdLine@2
+            inputs:
+              script: './build.cmd Pack'
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: './artifacts'
+              artifactName: artifacts
 
   - stage: deploy
     displayName: Deploy

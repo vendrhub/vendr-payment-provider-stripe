@@ -316,7 +316,6 @@ namespace Vendr.PaymentProviders.Stripe
                     .WithJsFile("https://js.stripe.com/v3/")
                     .WithJs(@"
                         var stripe = Stripe('" + publicKey + @"');
-
                         window.handleStripeCheckout = function (e) {
                             e.preventDefault();
                             stripe.redirectToCheckout({
