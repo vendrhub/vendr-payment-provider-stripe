@@ -351,7 +351,12 @@ namespace Vendr.PaymentProviders.Stripe
                         if (stripeSession.Mode == "payment")
                         {
                             var paymentIntentService = new PaymentIntentService();
-                            var paymentIntent = await paymentIntentService.GetAsync(stripeSession.PaymentIntentId);
+                            var paymentIntent = await paymentIntentService.GetAsync(stripeSession.PaymentIntentId, new PaymentIntentGetOptions
+                            {
+                                Expand = new List<string>(new[] {
+                                    "review"
+                                })
+                            });
 
                             return CallbackResult.Ok(new TransactionInfo
                             {
@@ -376,7 +381,9 @@ namespace Vendr.PaymentProviders.Stripe
                                 Expand = new List<string>(new[] { 
                                     "latest_invoice",
                                     "latest_invoice.charge",
-                                    "latest_invoice.payment_intent"
+                                    "latest_invoice.charge.review",
+                                    "latest_invoice.payment_intent",
+                                    "latest_invoice.payment_intent.review"
                                 })
                             });
                             var invoice = subscription.LatestInvoice;
@@ -395,6 +402,26 @@ namespace Vendr.PaymentProviders.Stripe
                                 { "stripeSubscriptionId", stripeSession.SubscriptionId },
                                 { "stripeChargeId", invoice.ChargeId },
                                 { "stripeCardCountry", invoice.Charge?.PaymentMethodDetails?.Card?.Country }
+                            });
+                        }
+                    }
+                    else if (stripeEvent != null && stripeEvent.Type == Events.ReviewClosed)
+                    {
+                        if (stripeEvent.Data?.Object?.Instance is Review stripeReview && !string.IsNullOrWhiteSpace(stripeReview.PaymentIntentId))
+                        {
+                            var paymentIntentService = new PaymentIntentService();
+                            var paymentIntent = paymentIntentService.Get(stripeReview.PaymentIntentId, new PaymentIntentGetOptions
+                                {
+                                    Expand = new List<string>(new[] {
+                                    "review"
+                                })
+                            });
+
+                            return CallbackResult.Ok(new TransactionInfo
+                            {
+                                TransactionId = GetTransactionId(paymentIntent),
+                                AmountAuthorized = AmountFromMinorUnits(paymentIntent.Amount),
+                                PaymentStatus = GetPaymentStatus(paymentIntent)
                             });
                         }
                     }
@@ -421,7 +448,12 @@ namespace Vendr.PaymentProviders.Stripe
                 if (!string.IsNullOrWhiteSpace(paymentIntentId))
                 {
                     var paymentIntentService = new PaymentIntentService();
-                    var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
+                    var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId, new PaymentIntentGetOptions
+                    {
+                        Expand = new List<string>(new[] {
+                            "review"
+                        })
+                    });
 
                     return new ApiResult()
                     {
@@ -478,7 +510,7 @@ namespace Vendr.PaymentProviders.Stripe
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntentOptions = new PaymentIntentCaptureOptions
                 {
-                    AmountToCapture = AmountToMinorUnits(ctx.Order.TransactionInfo.AmountAuthorized.Value),
+                    AmountToCapture = AmountToMinorUnits(ctx.Order.TransactionInfo.AmountAuthorized.Value)
                 };
                 var paymentIntent = await paymentIntentService.CaptureAsync(paymentIntentId, paymentIntentOptions);
 

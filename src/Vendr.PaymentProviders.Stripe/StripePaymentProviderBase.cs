@@ -59,6 +59,19 @@ namespace Vendr.PaymentProviders.Stripe
                         return OrderReference.Parse(stripeSession.ClientReferenceId);
                     }
                 }
+                else if (stripeEvent != null && stripeEvent.Type == Events.ReviewClosed)
+                {
+                    if (stripeEvent.Data?.Object?.Instance is Review stripeReview && !string.IsNullOrWhiteSpace(stripeReview.PaymentIntentId))
+                    {
+                        var paymentIntentService = new PaymentIntentService();
+                        var paymentIntent = paymentIntentService.Get(stripeReview.PaymentIntentId);
+
+                        if (paymentIntent != null && paymentIntent.Metadata.ContainsKey("orderReference"))
+                        {
+                            return OrderReference.Parse(paymentIntent.Metadata["orderReference"]);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -171,6 +184,10 @@ namespace Vendr.PaymentProviders.Stripe
                                 var invoiceService = new InvoiceService();
                                 stripeEvent.Data.Object.Instance = invoiceService.Get(stripeEvent.Data.Object.Id);
                                 break;
+                            case "review":
+                                var reviewService = new ReviewService();
+                                stripeEvent.Data.Object.Instance = reviewService.Get(stripeEvent.Data.Object.Id);
+                                break;
                         }
                     }
 
@@ -253,6 +270,10 @@ namespace Vendr.PaymentProviders.Stripe
 
             if (paymentIntent.Status == "canceled")
                 return PaymentStatus.Cancelled;
+
+            // Need this to occur before authorize / succeeded checks
+            if (paymentIntent.Review != null && paymentIntent.Review.Open)
+                return PaymentStatus.PendingExternalSystem;
 
             if (paymentIntent.Status == "requires_capture")
                 return PaymentStatus.Authorized;
