@@ -352,7 +352,12 @@ namespace Vendr.PaymentProviders.Stripe
                         if (stripeSession.Mode == "payment")
                         {
                             var paymentIntentService = new PaymentIntentService();
-                            var paymentIntent = paymentIntentService.Get(stripeSession.PaymentIntentId);
+                            var paymentIntent = paymentIntentService.Get(stripeSession.PaymentIntentId, new PaymentIntentGetOptions
+                            {
+                                Expand = new List<string>(new[] {
+                                    "review"
+                                })
+                            });
 
                             return CallbackResult.Ok(new TransactionInfo
                             {
@@ -373,11 +378,14 @@ namespace Vendr.PaymentProviders.Stripe
                         else if (stripeSession.Mode == "subscription")
                         {
                             var subscriptionService = new SubscriptionService();
-                            var subscription = subscriptionService.Get(stripeSession.SubscriptionId, new SubscriptionGetOptions { 
-                                Expand = new List<string>(new[] { 
+                            var subscription = subscriptionService.Get(stripeSession.SubscriptionId, new SubscriptionGetOptions
+                            {
+                                Expand = new List<string>(new[] {
                                     "latest_invoice",
                                     "latest_invoice.charge",
-                                    "latest_invoice.payment_intent"
+                                    "latest_invoice.charge.review",
+                                    "latest_invoice.payment_intent",
+                                    "latest_invoice.payment_intent.review"
                                 })
                             });
                             var invoice = subscription.LatestInvoice;
@@ -398,6 +406,26 @@ namespace Vendr.PaymentProviders.Stripe
                                 { "stripeCardCountry", invoice.Charge?.PaymentMethodDetails?.Card?.Country }
                             });
                         }
+                    }
+                }
+                else if (stripeEvent != null && stripeEvent.Type == Events.ReviewClosed)
+                {
+                    if (stripeEvent.Data?.Object?.Instance is Review stripeReview && !string.IsNullOrWhiteSpace(stripeReview.PaymentIntentId))
+                    {
+                        var paymentIntentService = new PaymentIntentService();
+                        var paymentIntent = paymentIntentService.Get(stripeReview.PaymentIntentId, new PaymentIntentGetOptions
+                        {
+                            Expand = new List<string>(new[] {
+                                "review"
+                            })
+                        });
+
+                        return CallbackResult.Ok(new TransactionInfo
+                        {
+                            TransactionId = GetTransactionId(paymentIntent),
+                            AmountAuthorized = AmountFromMinorUnits(paymentIntent.Amount),
+                            PaymentStatus = GetPaymentStatus(paymentIntent)
+                        });
                     }
                 }
             }
@@ -422,7 +450,12 @@ namespace Vendr.PaymentProviders.Stripe
                 if (!string.IsNullOrWhiteSpace(paymentIntentId))
                 {
                     var paymentIntentService = new PaymentIntentService();
-                    var paymentIntent = paymentIntentService.Get(paymentIntentId);
+                    var paymentIntent = paymentIntentService.Get(paymentIntentId, new PaymentIntentGetOptions
+                    {
+                        Expand = new List<string>(new[] {
+                            "review"
+                        })
+                    });
 
                     return new ApiResult()
                     {
@@ -479,7 +512,7 @@ namespace Vendr.PaymentProviders.Stripe
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntentOptions = new PaymentIntentCaptureOptions
                 {
-                    AmountToCapture = AmountToMinorUnits(order.TransactionInfo.AmountAuthorized.Value),
+                    AmountToCapture = AmountToMinorUnits(order.TransactionInfo.AmountAuthorized.Value)
                 };
                 var paymentIntent = paymentIntentService.Capture(paymentIntentId, paymentIntentOptions);
 
