@@ -125,9 +125,9 @@ namespace Vendr.PaymentProviders.Stripe
 
             var metaData = new Dictionary<string, string>
             {
-                { "ctx.OrderReference", ctx.Order.GenerateOrderReference() },
-                { "ctx.OrderId", ctx.Order.Id.ToString("D") },
-                { "ctx.OrderNumber", ctx.Order.OrderNumber }
+                { "orderReference", ctx.Order.GenerateOrderReference() },
+                { "orderId", ctx.Order.Id.ToString("D") },
+                { "orderNumber", ctx.Order.OrderNumber }
             };
 
             if (!string.IsNullOrWhiteSpace(ctx.Settings.OrderProperties))
@@ -202,7 +202,7 @@ namespace Vendr.PaymentProviders.Stripe
                             Name = orderLine.Name,
                             Metadata = new Dictionary<string, string>
                             {
-                                { "ProductReference", orderLine.ProductReference }
+                                { "productReference", orderLine.ProductReference }
                             }
                         };
                     }
