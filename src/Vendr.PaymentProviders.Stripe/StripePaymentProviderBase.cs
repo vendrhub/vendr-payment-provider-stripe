@@ -3,7 +3,9 @@ using Stripe;
 using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Vendr.Common.Logging;
 using Vendr.Core.Api;
@@ -147,51 +149,63 @@ namespace Vendr.PaymentProviders.Stripe
             {
                 try
                 {
-                    var json = await ctx.Request.Content.ReadAsStringAsync();
-                    var stripeSignature = ctx.Request.Headers.GetValues("Stripe-Signature").FirstOrDefault();
+                    var stream = await ctx.Request.Content.ReadAsStreamAsync();
 
-                    // Just validate the webhook signature
-                    EventUtility.ValidateSignature(json, stripeSignature, webhookSigningSecret);
-
-                    // Parse the event ourselves to our custom webhook event model
-                    // as it only captures minimal object information.
-                    stripeEvent = JsonConvert.DeserializeObject<StripeWebhookEvent>(json);
-
-                    // We manually fetch the event object type ourself as it means it will be fetched
-                    // using the same API version as the payment providers is coded against.
-                    // NB: Only supports a number of object types we are likely to be interested in.
-                    if (stripeEvent?.Data?.Object != null)
+                    if (stream.CanSeek)
                     {
-                        switch (stripeEvent.Data.Object.Type)
-                        {
-                            case "checkout.session":
-                                var sessionService = new SessionService();
-                                stripeEvent.Data.Object.Instance = sessionService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                            case "charge":
-                                var chargeService = new ChargeService();
-                                stripeEvent.Data.Object.Instance = chargeService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                            case "payment_intent": 
-                                var paymentIntentService = new PaymentIntentService();
-                                stripeEvent.Data.Object.Instance = paymentIntentService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                            case "subscription":
-                                var subscriptionService = new SubscriptionService();
-                                stripeEvent.Data.Object.Instance = subscriptionService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                            case "invoice":
-                                var invoiceService = new InvoiceService();
-                                stripeEvent.Data.Object.Instance = invoiceService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                            case "review":
-                                var reviewService = new ReviewService();
-                                stripeEvent.Data.Object.Instance = reviewService.Get(stripeEvent.Data.Object.Id);
-                                break;
-                        }
+                        stream.Seek(0, SeekOrigin.Begin);
                     }
 
-                    ctx.AdditionalData.Add("Vendr_StripeEvent", stripeEvent);
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        var json = await reader.ReadToEndAsync();
+                        var stripeSignature = ctx.Request.Headers.GetValues("Stripe-Signature").FirstOrDefault();
+
+                        // Just validate the webhook signature
+                        EventUtility.ValidateSignature(json, stripeSignature, webhookSigningSecret);
+
+                        // Parse the event ourselves to our custom webhook event model
+                        // as it only captures minimal object information.
+                        stripeEvent = JsonConvert.DeserializeObject<StripeWebhookEvent>(json);
+
+                        // We manually fetch the event object type ourself as it means it will be fetched
+                        // using the same API version as the payment providers is coded against.
+                        // NB: Only supports a number of object types we are likely to be interested in.
+                        if (stripeEvent?.Data?.Object != null)
+                        {
+                            switch (stripeEvent.Data.Object.Type)
+                            {
+                                case "checkout.session":
+                                    var sessionService = new SessionService();
+                                    stripeEvent.Data.Object.Instance = await sessionService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "charge":
+                                    var chargeService = new ChargeService();
+                                    stripeEvent.Data.Object.Instance = await chargeService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "payment_intent":
+                                    var paymentIntentService = new PaymentIntentService();
+                                    stripeEvent.Data.Object.Instance = await paymentIntentService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "subscription":
+                                    var subscriptionService = new SubscriptionService();
+                                    stripeEvent.Data.Object.Instance = await subscriptionService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "invoice":
+                                    var invoiceService = new InvoiceService();
+                                    stripeEvent.Data.Object.Instance = await invoiceService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                                case "review":
+                                    var reviewService = new ReviewService();
+                                    stripeEvent.Data.Object.Instance = await reviewService.GetAsync(stripeEvent.Data.Object.Id);
+                                    break;
+                            }
+                        }
+
+                        ctx.AdditionalData.Add("Vendr_StripeEvent", stripeEvent);
+
+                    }
+                    
                 }
                 catch (Exception ex)
                 {
