@@ -371,7 +371,7 @@ namespace Vendr.PaymentProviders.Stripe
                                 { "stripePaymentIntentId", stripeSession.PaymentIntentId },
                                 { "stripeSubscriptionId", stripeSession.SubscriptionId },
                                 { "stripeChargeId", GetTransactionId(paymentIntent) },
-                                { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
+                                { "stripeCardCountry", paymentIntent.LatestCharge?.PaymentMethodDetails?.Card?.Country }
                             });
                         }
                         else if (stripeSession.Mode == "subscription")
@@ -524,7 +524,7 @@ namespace Vendr.PaymentProviders.Stripe
                     MetaData = new Dictionary<string, string>
                     {
                         { "stripeChargeId", GetTransactionId(paymentIntent) },
-                        { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
+                        { "stripeCardCountry", paymentIntent.LatestCharge?.PaymentMethodDetails?.Card?.Country }
                     }
                 };
             }

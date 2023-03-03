@@ -224,9 +224,7 @@ namespace Vendr.PaymentProviders.Stripe
 
         protected string GetTransactionId(PaymentIntent paymentIntent)
         {
-            return (paymentIntent.Charges?.Data?.Count ?? 0) > 0
-                ? GetTransactionId(paymentIntent.Charges.Data[0])
-                : null;
+            return GetTransactionId(paymentIntent.LatestCharge);
         }
 
         protected string GetTransactionId(Invoice invoice)
@@ -294,9 +292,9 @@ namespace Vendr.PaymentProviders.Stripe
 
             if (paymentIntent.Status == "succeeded")
             {
-                if (paymentIntent.Charges.Data.Any())
+                if (paymentIntent.LatestCharge != null)
                 {
-                    return GetPaymentStatus(paymentIntent.Charges.Data[0]);
+                    return GetPaymentStatus(paymentIntent.LatestCharge);
                 }
                 else
                 {
