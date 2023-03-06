@@ -22,6 +22,16 @@ namespace Vendr.PaymentProviders.Stripe
     {
         protected readonly ILogger<TSelf> _logger;
 
+        private static string[] SUPPORTED_LOCALES = new[]{
+            "bg","cs","da","de","el","en",
+            "en-GB","es","es-419","et","fi","fil",
+            "fr","fr-CA","hr","hu","id","it",
+            "ja","ko","lt","lv","ms","mt",
+            "nb","nl","pl","pt","pt-BR","ro",
+            "ru","sk","sl","sv","th","tr",
+            "vi","zh","zh-HK","zh-TW"
+        };
+
         public StripePaymentProviderBase(VendrContext vendr,
             ILogger<TSelf> logger)
             : base(vendr)
@@ -337,6 +347,20 @@ namespace Vendr.PaymentProviders.Stripe
             }
 
             return paymentState;
+        }
+
+        protected string FindBestMatchSupportedLocale(string locale)
+        {
+            var exactMatch = SUPPORTED_LOCALES.FirstOrDefault(x => x.Equals(locale, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(exactMatch))
+                return exactMatch;
+
+            var countryLocale = locale.Split(new[] { '-' }, StringSplitOptions.RemoveEmptyEntries)[0];
+            var subMatch = SUPPORTED_LOCALES.FirstOrDefault(x => x.Equals(countryLocale, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(subMatch))
+                return subMatch;
+
+            return "auto";
         }
     }
 }

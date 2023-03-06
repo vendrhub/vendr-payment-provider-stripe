@@ -277,7 +277,8 @@ namespace Vendr.PaymentProviders.Stripe
                     : "payment",
                 ClientReferenceId = ctx.Order.GenerateOrderReference(),
                 SuccessUrl = ctx.Urls.ContinueUrl,
-                CancelUrl = ctx.Urls.CancelUrl
+                CancelUrl = ctx.Urls.CancelUrl,
+                Locale = FindBestMatchSupportedLocale(ctx.Order.LanguageIsoCode)
             };
 
             if (hasRecurringItems)
