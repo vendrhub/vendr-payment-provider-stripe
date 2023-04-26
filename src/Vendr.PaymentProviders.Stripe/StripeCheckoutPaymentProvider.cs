@@ -354,7 +354,9 @@ namespace Vendr.PaymentProviders.Stripe
                             var paymentIntentService = new PaymentIntentService();
                             var paymentIntent = await paymentIntentService.GetAsync(stripeSession.PaymentIntentId, new PaymentIntentGetOptions
                             {
-                                Expand = new List<string>(new[] {
+                                Expand = new List<string>(new[]
+                                {
+                                    "latest_charge",
                                     "review"
                                 })
                             });
@@ -378,8 +380,10 @@ namespace Vendr.PaymentProviders.Stripe
                         else if (stripeSession.Mode == "subscription")
                         {
                             var subscriptionService = new SubscriptionService();
-                            var subscription = await subscriptionService.GetAsync(stripeSession.SubscriptionId, new SubscriptionGetOptions { 
-                                Expand = new List<string>(new[] { 
+                            var subscription = await subscriptionService.GetAsync(stripeSession.SubscriptionId, new SubscriptionGetOptions
+                            { 
+                                Expand = new List<string>(new[]
+                                { 
                                     "latest_invoice",
                                     "latest_invoice.charge",
                                     "latest_invoice.charge.review",
@@ -412,8 +416,10 @@ namespace Vendr.PaymentProviders.Stripe
                         {
                             var paymentIntentService = new PaymentIntentService();
                             var paymentIntent = paymentIntentService.Get(stripeReview.PaymentIntentId, new PaymentIntentGetOptions
+                            {
+                                Expand = new List<string>(new[]
                                 {
-                                    Expand = new List<string>(new[] {
+                                    "latest_charge",
                                     "review"
                                 })
                             });
@@ -451,7 +457,9 @@ namespace Vendr.PaymentProviders.Stripe
                     var paymentIntentService = new PaymentIntentService();
                     var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId, new PaymentIntentGetOptions
                     {
-                        Expand = new List<string>(new[] {
+                        Expand = new List<string>(new[]
+                        {
+                            "latest_charge",
                             "review"
                         })
                     });
