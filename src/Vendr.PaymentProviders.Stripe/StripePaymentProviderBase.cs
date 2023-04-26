@@ -22,7 +22,8 @@ namespace Vendr.PaymentProviders.Stripe
     {
         protected readonly ILogger<TSelf> _logger;
 
-        private static string[] SUPPORTED_LOCALES = new[]{
+        private static string[] SUPPORTED_LOCALES = new[]
+        {
             "bg","cs","da","de","el","en",
             "en-GB","es","es-419","et","fi","fil",
             "fr","fr-CA","hr","hu","id","it",
@@ -234,12 +235,12 @@ namespace Vendr.PaymentProviders.Stripe
 
         protected string GetTransactionId(PaymentIntent paymentIntent)
         {
-            return GetTransactionId(paymentIntent.LatestCharge);
+            return paymentIntent?.LatestChargeId;
         }
 
         protected string GetTransactionId(Invoice invoice)
         {
-            return GetTransactionId(invoice.Charge);
+            return invoice?.ChargeId;
         }
 
         protected string GetTransactionId(Charge charge)
