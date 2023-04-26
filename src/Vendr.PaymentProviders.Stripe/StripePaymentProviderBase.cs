@@ -22,6 +22,17 @@ namespace Vendr.PaymentProviders.Stripe
     {
         protected readonly ILogger<TSelf> _logger;
 
+        private static string[] SUPPORTED_LOCALES = new[]
+        {
+            "bg","cs","da","de","el","en",
+            "en-GB","es","es-419","et","fi","fil",
+            "fr","fr-CA","hr","hu","id","it",
+            "ja","ko","lt","lv","ms","mt",
+            "nb","nl","pl","pt","pt-BR","ro",
+            "ru","sk","sl","sv","th","tr",
+            "vi","zh","zh-HK","zh-TW"
+        };
+
         public StripePaymentProviderBase(VendrContext vendr,
             ILogger<TSelf> logger)
             : base(vendr)
@@ -224,14 +235,12 @@ namespace Vendr.PaymentProviders.Stripe
 
         protected string GetTransactionId(PaymentIntent paymentIntent)
         {
-            return (paymentIntent.Charges?.Data?.Count ?? 0) > 0
-                ? GetTransactionId(paymentIntent.Charges.Data[0])
-                : null;
+            return paymentIntent?.LatestChargeId;
         }
 
         protected string GetTransactionId(Invoice invoice)
         {
-            return GetTransactionId(invoice.Charge);
+            return invoice?.ChargeId;
         }
 
         protected string GetTransactionId(Charge charge)
@@ -294,9 +303,9 @@ namespace Vendr.PaymentProviders.Stripe
 
             if (paymentIntent.Status == "succeeded")
             {
-                if (paymentIntent.Charges.Data.Any())
+                if (paymentIntent.LatestCharge != null)
                 {
-                    return GetPaymentStatus(paymentIntent.Charges.Data[0]);
+                    return GetPaymentStatus(paymentIntent.LatestCharge);
                 }
                 else
                 {
@@ -337,6 +346,20 @@ namespace Vendr.PaymentProviders.Stripe
             }
 
             return paymentState;
+        }
+
+        protected string FindBestMatchSupportedLocale(string locale)
+        {
+            var exactMatch = SUPPORTED_LOCALES.FirstOrDefault(x => x.Equals(locale, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(exactMatch))
+                return exactMatch;
+
+            var countryLocale = locale.Split(new[] { '-' }, StringSplitOptions.RemoveEmptyEntries)[0];
+            var subMatch = SUPPORTED_LOCALES.FirstOrDefault(x => x.Equals(countryLocale, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(subMatch))
+                return subMatch;
+
+            return "auto";
         }
     }
 }

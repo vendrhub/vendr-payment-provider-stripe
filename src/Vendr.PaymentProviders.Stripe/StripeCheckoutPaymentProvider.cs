@@ -277,7 +277,8 @@ namespace Vendr.PaymentProviders.Stripe
                     : "payment",
                 ClientReferenceId = ctx.Order.GenerateOrderReference(),
                 SuccessUrl = ctx.Urls.ContinueUrl,
-                CancelUrl = ctx.Urls.CancelUrl
+                CancelUrl = ctx.Urls.CancelUrl,
+                Locale = FindBestMatchSupportedLocale(ctx.Order.LanguageIsoCode)
             };
 
             if (hasRecurringItems)
@@ -353,7 +354,9 @@ namespace Vendr.PaymentProviders.Stripe
                             var paymentIntentService = new PaymentIntentService();
                             var paymentIntent = await paymentIntentService.GetAsync(stripeSession.PaymentIntentId, new PaymentIntentGetOptions
                             {
-                                Expand = new List<string>(new[] {
+                                Expand = new List<string>(new[]
+                                {
+                                    "latest_charge",
                                     "review"
                                 })
                             });
@@ -371,14 +374,16 @@ namespace Vendr.PaymentProviders.Stripe
                                 { "stripePaymentIntentId", stripeSession.PaymentIntentId },
                                 { "stripeSubscriptionId", stripeSession.SubscriptionId },
                                 { "stripeChargeId", GetTransactionId(paymentIntent) },
-                                { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
+                                { "stripeCardCountry", paymentIntent.LatestCharge?.PaymentMethodDetails?.Card?.Country }
                             });
                         }
                         else if (stripeSession.Mode == "subscription")
                         {
                             var subscriptionService = new SubscriptionService();
-                            var subscription = await subscriptionService.GetAsync(stripeSession.SubscriptionId, new SubscriptionGetOptions { 
-                                Expand = new List<string>(new[] { 
+                            var subscription = await subscriptionService.GetAsync(stripeSession.SubscriptionId, new SubscriptionGetOptions
+                            { 
+                                Expand = new List<string>(new[]
+                                { 
                                     "latest_invoice",
                                     "latest_invoice.charge",
                                     "latest_invoice.charge.review",
@@ -411,8 +416,10 @@ namespace Vendr.PaymentProviders.Stripe
                         {
                             var paymentIntentService = new PaymentIntentService();
                             var paymentIntent = paymentIntentService.Get(stripeReview.PaymentIntentId, new PaymentIntentGetOptions
+                            {
+                                Expand = new List<string>(new[]
                                 {
-                                    Expand = new List<string>(new[] {
+                                    "latest_charge",
                                     "review"
                                 })
                             });
@@ -450,7 +457,9 @@ namespace Vendr.PaymentProviders.Stripe
                     var paymentIntentService = new PaymentIntentService();
                     var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId, new PaymentIntentGetOptions
                     {
-                        Expand = new List<string>(new[] {
+                        Expand = new List<string>(new[]
+                        {
+                            "latest_charge",
                             "review"
                         })
                     });
@@ -524,7 +533,7 @@ namespace Vendr.PaymentProviders.Stripe
                     MetaData = new Dictionary<string, string>
                     {
                         { "stripeChargeId", GetTransactionId(paymentIntent) },
-                        { "stripeCardCountry", paymentIntent.Charges?.Data?.FirstOrDefault()?.PaymentMethodDetails?.Card?.Country }
+                        { "stripeCardCountry", paymentIntent.LatestCharge?.PaymentMethodDetails?.Card?.Country }
                     }
                 };
             }
