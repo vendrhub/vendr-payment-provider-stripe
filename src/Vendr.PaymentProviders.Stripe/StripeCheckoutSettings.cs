@@ -33,5 +33,18 @@ namespace Vendr.PaymentProviders.Stripe
             IsAdvanced = true,
             SortOrder = 1000400)]
         public string PaymentMethodTypes { get; set; }
+
+        [PaymentProviderSetting(Name = "Disable Automatic Tax Calculation",
+            Description = "Flag indicating whether Stripe should automatically calculate tax on a checkout session. Ensure 'Enable automatic tax calculation' is disabled from the stripe dashboard settings.",
+            IsAdvanced = true,
+            SortOrder = 1000500)]
+        public bool DisableAutomaticTax { get; set; }
+
+
+        [PaymentProviderSetting(Name = "Disable Subscription Tax",
+            Description = "Flag indicating whether to disable the 'Subscription Tax' from being added by default to recurring subscription products based on the order line tax rate.",
+            IsAdvanced = true,
+            SortOrder = 1000600)]
+        public bool DisableSubscriptionTax { get; set; }
     }
 }

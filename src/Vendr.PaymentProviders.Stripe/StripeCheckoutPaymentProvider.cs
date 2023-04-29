@@ -166,14 +166,19 @@ namespace Vendr.PaymentProviders.Stripe
                     // the quantity of the stripe price you want to buy.
                     lineItemOpts.Quantity = (long)orderLine.Quantity;
 
-                    // Because we are in charge of what taxes apply, we need to setup a tax rate
-                    // to ensure the price defined in stripe has the relevant taxes applied
-                    var stripePricesIncludeTax = PropertyIsTrue(orderLine.Properties, "stripePriceIncludesTax");
-                    var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, stripePricesIncludeTax);
-                    if (stripeTaxRate != null)
+
+                    if (!ctx.Settings.DisableSubscriptionTax)
                     {
-                        lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                        // Because we are in charge of what taxes apply, we need to setup a tax rate
+                        // to ensure the price defined in stripe has the relevant taxes applied
+                        var stripePricesIncludeTax = PropertyIsTrue(orderLine.Properties, "stripePriceIncludesTax");
+                        var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, stripePricesIncludeTax);
+                        if (stripeTaxRate != null)
+                        {
+                            lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                        }
                     }
+
                 }
                 else
                 {
@@ -213,14 +218,18 @@ namespace Vendr.PaymentProviders.Stripe
                     // as a single subscription item with one price being the line items total price
                     lineItemOpts.Quantity = (long)orderLine.Quantity;
 
-                    // If we define the price, then create tax rates that are set to be inclusive
-                    // as this means that we can pass prices inclusive of tax and Stripe works out
-                    // the pre-tax price which would be less suseptable to rounding inconsistancies
-                    var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, false);
-                    if (stripeTaxRate != null)
+                    if (!ctx.Settings.DisableSubscriptionTax)
                     {
-                        lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                        // If we define the price, then create tax rates that are set to be inclusive
+                        // as this means that we can pass prices inclusive of tax and Stripe works out
+                        // the pre-tax price which would be less suseptable to rounding inconsistancies
+                        var stripeTaxRate = GetOrCreateStripeTaxRate(ctx, "Subscription Tax", orderLineTaxRate, false);
+                        if (stripeTaxRate != null)
+                        {
+                            lineItemOpts.TaxRates = new List<string>(new[] { stripeTaxRate.Id });
+                        }
                     }
+
                 }
 
                 lineItems.Add(lineItemOpts);
@@ -300,6 +309,14 @@ namespace Vendr.PaymentProviders.Stripe
             if (ctx.Settings.SendStripeReceipt)
             {
                 sessionOptions.PaymentIntentData.ReceiptEmail = ctx.Order.CustomerInfo.Email;
+            }
+
+            if (ctx.Settings.DisableAutomaticTax)
+            {
+                sessionOptions.AutomaticTax = new SessionAutomaticTaxOptions()
+                {
+                    Enabled = false
+                };
             }
 
             var sessionService = new SessionService();
